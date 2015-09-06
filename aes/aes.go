@@ -7,19 +7,19 @@ package main
 
 struct termios tio;
 
-void noecho() {
+void noecho(int fd) {
 	struct termios tio;
-	tcgetattr(0, &tio);
+	tcgetattr(fd, &tio);
 	tio.c_lflag &= ~ECHO;
-	tcsetattr(0, TCSANOW, &tio);
+	tcsetattr(fd, TCSANOW, &tio);
 }
 
-void savetermios() {
-	tcgetattr(0, &tio);
+void savetermios(int fd) {
+	tcgetattr(fd, &tio);
 }
 
-void resettermios() {
-	tcsetattr(0, TCSANOW, &tio);
+void resettermios(int fd) {
+	tcsetattr(fd, TCSANOW, &tio);
 }
 */
 import "C"
@@ -30,35 +30,49 @@ import (
 	"flag"
 	"crypto/aes"
 	"crypto/cipher"
+	"io"
+	"io/ioutil"
+)
+
+const (
+	CipherBlockSize = 32
 )
 
 func ReadPassword() []byte {
-	fmt.Fprint(os.Stderr, "Enter pass: ")
+	var n int
+	var err error
 	
-	C.savetermios()
-	C.noecho()
-	
-	data := make([]byte, 32)
-	n, err := os.Stdin.Read(data)
+	tty, err := os.Open("/dev/tty")
 	if err != nil {
 		panic(err)
 	}
 	
-	C.resettermios()
+	C.savetermios(C.int(tty.Fd()))
+	C.noecho(C.int(tty.Fd()))
+	
+	data := make([]byte, CipherBlockSize)
+	fmt.Fprint(os.Stderr, "Enter pass: ")
+	n, err = tty.Read(data)
+	tty.Close()
+	if err != nil {
+		panic(err)
+	}
+	
+	C.resettermios(C.int(tty.Fd()))
+	fmt.Fprint(os.Stderr, "\n")
 
-	i := 0
-	for i < n {
+	clean := false
+	for i := 0; i < n; i++ {
 		if data[i] == '\n' {
-			break
+			clean = true
 		}
-		i++
+		
+		if clean {
+			data[i] = 0
+		}
 	}
 
-	if i == n {
-		fmt.Errorf("Sorry, password can only be 32 characters.")
-		os.Exit(1)
-	}
-	return data[:i]
+	return data
 }
 
 func clean(a []byte, n int) {
@@ -98,17 +112,21 @@ func Decrypt(block cipher.Block, encrypt, clear *os.File) error {
 	
 	for {
 		n, err := encrypt.Read(in)
-		if n == 0 {
+		if n != block.BlockSize() {
 			break
 		} else if err != nil {
 			return err
 		}
 		
-		clean(in, n)
-		
 		block.Decrypt(out, in)
 		
-		_, err = clear.Write(out)
+		var i int
+		for i = 0; i < n; i++ {
+			if out[i] == 0 {
+				break
+			}
+		}
+		_, err = clear.Write(out[:i])
 		if err != nil {
 			return err
 		}
@@ -141,11 +159,28 @@ func main() {
 		}
 	}
 	
+	stdinFile, err := ioutil.TempFile(os.TempDir(), "aes")
+	for _, arg := range flag.Args() {
+		if arg == "-" {
+			data, err := ioutil.ReadAll(os.Stdin)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				panic(err)
+			}
+			stdinFile.Write(data)
+		}
+	}
+	
+	stdinName := stdinFile.Name()
+	stdinFile.Close()
+	stdinFile, err = os.Open(stdinName)
+	if err != nil {
+		panic(err)
+	}
+	
 	pass := ReadPassword()
-	key := make([]byte, 32)
-	copy(key, pass)
-
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(pass)
 	if err != nil {
 		panic(err)
 	}
@@ -154,7 +189,8 @@ func main() {
 		var file *os.File
 		
 		if arg == "-" {
-			file = os.Stdin
+			stdinFile.Seek(0, 0)
+			file = stdinFile
 		} else {
 			file, err = os.Open(arg)
 			if err != nil {

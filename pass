@@ -1,0 +1,83 @@
+#!/bin/sh
+
+umask 077
+
+PROGRAM="$0"
+STOREDIR="$HOME/.secstore"
+
+[ ! -d "$STOREDIR" ] && mkdir "$STOREDIR"
+
+[ -z "$EDITOR" ] && EDITOR=vi
+
+die() {
+	echo "$@" >&2
+	exit 1
+}
+
+cmd_help() {
+	echo "Help is for the weak. Grow some balls."
+	echo "PS: The strong AND smart one would first kill"
+	echo "    me for being a dick then properly implement"
+	echo "    this function."
+}
+
+cmd_show() {
+	[ -z "$1" ] && die "Usage: $PROGRAM show file-name"
+	
+	local file="$STOREDIR/$1.aes"
+	[ ! -f "$file" ] && die "$1 does not exist."
+
+	aes -d "$file" || exit $?
+}
+
+cmd_edit() {
+	[ -z "$1" ] && die "Usage: $PROGRAM edit file-name"
+	
+	local file="$STOREDIR/$1.aes"
+	[ ! -f "$file" ] && die "$1 does not exist."
+
+	local tmp=$(mktemp)
+
+	aes -o="$tmp" -d "$file" 
+	"$EDITOR" "$tmp"
+	aes -o="$file" -e "$tmp" 
+	rm "$tmp"
+}
+
+cmd_remove() {
+	[ ! -a "$STOREDIR/$1.gpg" ] && die "$1 does not exist"
+	echo -n "Really remove $1? [y/n]: "
+	read answer
+	[ "$answer" != "y" ] && exit
+	rm "$STOREDIR/$1.aes"
+	echo "Removed $1"
+}
+
+cmd_new() {
+	local file="$STOREDIR/$1.aes"
+	[ -a "$file" ] && die "$1 already exists"
+	
+	local tmp=$(mktemp)
+	
+	"$EDITOR" "$tmp"
+	aes -o="$file" -e "$tmp" 
+	rm "$tmp"
+}
+
+cmd_list() {
+	cd "$STOREDIR"
+	for f in *; do
+		echo "$f" | sed "s/.aes//"
+	done
+}
+
+case "$1" in
+	init) shift;	cmd_init "${@}" ;;
+	help|-h) 	cmd_help ;;
+	new) shift;	cmd_new "${@}" ;;
+	show) shift;	cmd_show "${@}" ;;
+	rm) shift;	cmd_remove "${@}" ;;
+	edit) shift;	cmd_edit "${@}" ;;
+	*) 		cmd_list "${@}";;
+esac
+exit 0
