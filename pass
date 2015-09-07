@@ -71,6 +71,8 @@ cmd_list() {
 	done
 }
 
+[ -z "$1" ] && cmd_list && exit 0
+
 case "$1" in
 	init) shift;	cmd_init "${@}" ;;
 	help|-h) 	cmd_help ;;
@@ -78,6 +80,6 @@ case "$1" in
 	show) shift;	cmd_show "${@}" ;;
 	rm) shift;	cmd_remove "${@}" ;;
 	edit) shift;	cmd_edit "${@}" ;;
-	*) 		cmd_list "${@}";;
+	*) 		cmd_show "${@}";;
 esac
 exit 0

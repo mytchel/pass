@@ -36,11 +36,11 @@ const (
 	CipherBlockSize = 32
 )
 
-func ReadPassword() []byte {
+func ReadPassword(input string) []byte {
 	var n int
 	var err error
 	
-	tty, err := os.Open("/dev/tty")
+	tty, err := os.Open(input)
 	if err != nil {
 		panic(err)
 	}
@@ -141,6 +141,7 @@ func main() {
 	decrypt := flag.Bool("d", false, "Decrypt given files or stdin to output")
 	encrypt := flag.Bool("e", false, "Encrypt given files or stdin to output")
 	outputPath := flag.String("o", "/dev/stdout", "Redirect output to file")
+	inputPath := flag.String("p", "/dev/tty", "Read the password from this file")
 	
 	flag.Parse()
 
@@ -150,7 +151,7 @@ func main() {
 		os.Exit(1)
 	}
 	
-	pass := ReadPassword()
+	pass := ReadPassword(*inputPath)
 	block, err := aes.NewCipher(pass)
 	if err != nil {
 		panic(err)
