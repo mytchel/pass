@@ -30,8 +30,6 @@ import (
 	"flag"
 	"crypto/aes"
 	"crypto/cipher"
-	"io"
-	"io/ioutil"
 )
 
 const (
@@ -144,8 +142,7 @@ func main() {
 	outputPath := flag.String("o", "", "Redirect output to file")
 	
 	flag.Parse()
-	
-	if *decrypt && *encrypt || !*decrypt && !*encrypt {
+		if *decrypt && *encrypt || !*decrypt && !*encrypt {
 		fmt.Errorf("Please specify one of d or e\n")
 		os.Exit(1)
 	}
@@ -159,26 +156,6 @@ func main() {
 		}
 	}
 	
-	stdinFile, err := ioutil.TempFile(os.TempDir(), "aes")
-	for _, arg := range flag.Args() {
-		if arg == "-" {
-			data, err := ioutil.ReadAll(os.Stdin)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				panic(err)
-			}
-			stdinFile.Write(data)
-		}
-	}
-	
-	stdinName := stdinFile.Name()
-	stdinFile.Close()
-	stdinFile, err = os.Open(stdinName)
-	if err != nil {
-		panic(err)
-	}
-	
 	pass := ReadPassword()
 	block, err := aes.NewCipher(pass)
 	if err != nil {
@@ -189,8 +166,7 @@ func main() {
 		var file *os.File
 		
 		if arg == "-" {
-			stdinFile.Seek(0, 0)
-			file = stdinFile
+			file = os.Stdin
 		} else {
 			file, err = os.Open(arg)
 			if err != nil {
