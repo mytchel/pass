@@ -27,7 +27,7 @@ cmd_show() {
 	local file="$STOREDIR/$1.aes"
 	[ ! -f "$file" ] && die "$1 does not exist."
 
-	aes -d "$file" || exit $?
+	echo "$password" | aes -p=/dev/stdin -d "$file" 2> /dev/null || exit $?
 }
 
 cmd_edit() {
@@ -38,9 +38,9 @@ cmd_edit() {
 
 	local tmp=$(mktemp)
 
-	aes -o="$tmp" -d "$file" 
+	echo "$password" | aes -p=/dev/stdin -o="$tmp" -d "$file" 2> /dev/null
 	"$EDITOR" "$tmp"
-	aes -o="$file" -e "$tmp" 
+	echo "$password" | aes -p=/dev/stdin -o="$file" -e "$tmp" 2> /dev/null
 	rm "$tmp"
 }
 
@@ -60,7 +60,7 @@ cmd_new() {
 	local tmp=$(mktemp)
 	
 	"$EDITOR" "$tmp"
-	aes -o="$file" -e "$tmp" 
+	echo "$password" | aes -p=/dev/stdin -o="$file" -e "$tmp" 2> /dev/null
 	rm "$tmp"
 }
 
@@ -72,6 +72,12 @@ cmd_list() {
 }
 
 [ -z "$1" ] && cmd_list && exit 0
+
+echo -n "Enter password: "
+stty -echo
+read password
+echo
+stty echo
 
 case "$1" in
 	init) shift;	cmd_init "${@}" ;;
