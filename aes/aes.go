@@ -92,7 +92,6 @@ func Encrypt(block cipher.Block, clear, encrypt *os.File) error {
 		}
 		
 		clean(in, n)
-		
 		block.Encrypt(out, in)
 		
 		_, err = encrypt.Write(out)
@@ -107,7 +106,7 @@ func Encrypt(block cipher.Block, clear, encrypt *os.File) error {
 func Decrypt(block cipher.Block, encrypt, clear *os.File) error {
 	in := make([]byte, block.BlockSize())
 	out := make([]byte, block.BlockSize())
-	
+
 	for {
 		n, err := encrypt.Read(in)
 		if n != block.BlockSize() {
@@ -124,6 +123,7 @@ func Decrypt(block cipher.Block, encrypt, clear *os.File) error {
 				break
 			}
 		}
+		
 		_, err = clear.Write(out[:i])
 		if err != nil {
 			return err
@@ -135,25 +135,19 @@ func Decrypt(block cipher.Block, encrypt, clear *os.File) error {
 
 func main() {
 	var output *os.File
+	var files []*os.File
 	var err error
 	
-	decrypt := flag.Bool("d", false, "Decrypt given files to output")
-	encrypt := flag.Bool("e", false, "Encrypt given files to output")
-	outputPath := flag.String("o", "", "Redirect output to file")
+	decrypt := flag.Bool("d", false, "Decrypt given files or stdin to output")
+	encrypt := flag.Bool("e", false, "Encrypt given files or stdin to output")
+	outputPath := flag.String("o", "/dev/stdout", "Redirect output to file")
 	
 	flag.Parse()
-		if *decrypt && *encrypt || !*decrypt && !*encrypt {
-		fmt.Errorf("Please specify one of d or e\n")
+
+	if !*decrypt && !*encrypt {
+		fmt.Fprintf(os.Stderr, "You must specify one of -d or -e\n")
+		flag.Usage()
 		os.Exit(1)
-	}
-	
-	if *outputPath == "" {
-		output = os.Stdout
-	} else {
-		output, err = os.Create(*outputPath)
-		if err != nil {
-			panic(err)
-		}
 	}
 	
 	pass := ReadPassword()
@@ -162,22 +156,32 @@ func main() {
 		panic(err)
 	}
 	
+	files = make([]*os.File, 0)
+	
+	if flag.NArg() == 0 {
+		files = append(files, os.Stdin)
+	}
+	
 	for _, arg := range flag.Args() {
-		var file *os.File
-		
-		if arg == "-" {
-			file = os.Stdin
-		} else {
-			file, err = os.Open(arg)
-			if err != nil {
-				panic(err)
-			}
+		file, err := os.Open(arg)
+		if err != nil {
+			panic(err)
 		}
 		
+		files = append(files, file)
+	}
+	
+	output, err = os.Create(*outputPath)
+	if err != nil {
+		panic(err)
+	}
+	
+	for _, file := range files {
 		if *encrypt {
 			Encrypt(block, file, output)
 		} else if *decrypt {
 			Decrypt(block, file, output)
 		}
+		file.Close()
 	}
 }
