@@ -22,12 +22,19 @@ cmd_help() {
 }
 
 cmd_show() {
+	if [ "$1" == "-c" ]; then
+		shift
+		output="xsel -b -i"
+	else
+		output=cat
+	fi
+
 	[ -z "$1" ] && die "Usage: $PROGRAM show file-name"
 	
 	local file="$STOREDIR/$1.aes"
 	[ ! -f "$file" ] && die "$1 does not exist."
 
-	echo "$password" | aes -p=/dev/stdin -d "$file" 2> /dev/null || exit $?
+	echo "$password" | aes -p=/dev/stdin -d "$file" 2> /dev/null | $output || exit $?
 }
 
 cmd_edit() {
@@ -73,8 +80,10 @@ cmd_list() {
 
 [ -z "$1" ] && cmd_list && exit 0
 
-echo -n "Enter password: "
+echo -n "Enter password: " >&2
 stty -echo
+exec 6<&0
+exec 0</dev/tty
 read password
 echo
 stty echo
