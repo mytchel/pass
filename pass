@@ -61,12 +61,19 @@ cmd_edit() {
 }
 
 cmd_remove() {
-	[ ! -a "$1.aes" ] && die "$1 does not exist"
-	echo -n "Really remove $1? [y/n]: "
+	if [ -d "$1" ]; then
+		file="$1"
+	elif [ -a "$1.aes" ]; then
+		file="$1.aes"
+	else
+		die "$1 does not exist"
+	fi
+
+	echo -n "Really remove $file (and possibly subfiles)? [y/n]: "
 	read answer
 	[ "$answer" != "y" ] && exit
-	rm "$1.aes"
-	echo "Removed $1"
+	rm -r "$file"
+	echo "Removed $file"
 }
 
 cmd_new() {
@@ -91,8 +98,8 @@ cmd_list() {
 	cd "$2"
 	for f in *; do
 		if [ -d "$f" ]; then
-			echo "$1|-- $f"
-			cmd_list "$1|   |-- " "$STOREDIR/$2/$f"
+			echo "$1$f/"
+			cmd_list "$1   /" "$STOREDIR/$2/$f"
 			cd "$STOREDIR/$2"
 		else
 			echo "$1$f" | sed "s/.aes//"
@@ -118,6 +125,7 @@ case "$1" in
 	mkdir) shift;	cmd_mkdir "${@}" ;;
 	show) shift;	cmd_show "${@}" ;;
 	rm) shift;	cmd_remove "${@}" ;;
+	rmdir) shift;   cmd_rmdir "${@}" ;;
 	edit) shift;	cmd_edit "${@}" ;;
 	*) 		cmd_show "${@}";;
 esac
