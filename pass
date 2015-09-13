@@ -22,10 +22,14 @@ cmd_help() {
 	echo "    this function."
 }
 
-# Clear clipboard after $1's delay
+# Clear clipboard after $2's delay if contents of the clipboard
+# is still $1
 clear_clipboard() {
-	sleep $1
-	echo nothing | xsel -b -i
+	sleep $2
+	current="$(xsel -b -i)"
+	if [[ "$1" == "$current" ]]; then
+		echo nothing | xsel -b -i
+	fi
 }
 
 cmd_show() {
@@ -33,10 +37,11 @@ cmd_show() {
 		cmd_list "" "$1"
 	fi
 
+	clipboard=0
 	if [ "$1" == "-c" ]; then
 		shift
 		output="xsel -b -i"
-		clear_clipboard 60 &
+		clipboard=1
 	else
 		output="cat"
 	fi
@@ -48,7 +53,13 @@ cmd_show() {
 	
 	get_pass
 
-	echo "$password" | aes -p=/dev/stdin -d "$file" 2> /dev/null | eval "$output" || exit $?
+	pass=`echo "$password" | aes -p=/dev/stdin -d "$file" 2> /dev/null`
+
+	if [ $clipboard -eq 1 ]; then
+		clear_clipboard "$pass" 10 &
+	fi
+
+	echo "$pass" | eval "$output"
 }
 
 cmd_edit() {
