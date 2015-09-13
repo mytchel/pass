@@ -22,6 +22,12 @@ cmd_help() {
 	echo "    this function."
 }
 
+# Clear clipboard after $1's delay
+clear_clipboard() {
+	sleep $1
+	echo nothing | xsel -b -i
+}
+
 cmd_show() {
 	if [ -d "$1" ]; then
 		cmd_list "" "$1"
@@ -30,8 +36,9 @@ cmd_show() {
 	if [ "$1" == "-c" ]; then
 		shift
 		output="xsel -b -i"
+		clear_clipboard 60 &
 	else
-		output=cat
+		output="cat"
 	fi
 
 	[ -z "$1" ] && die "Usage: $PROGRAM show [-c] file-name"
@@ -41,7 +48,7 @@ cmd_show() {
 	
 	get_pass
 
-	echo "$password" | aes -p=/dev/stdin -d "$file" 2> /dev/null | $output || exit $?
+	echo "$password" | aes -p=/dev/stdin -d "$file" 2> /dev/null | eval "$output" || exit $?
 }
 
 cmd_edit() {
