@@ -36,6 +36,31 @@ const (
 	CipherBlockSize = 32
 )
 
+var magic []byte = []byte{
+	43,
+	32,
+	55,
+	54,
+	10,
+	4,
+	43,
+	99,
+	12,
+	84,
+	10,
+	63,
+	19,
+	53,	
+}
+
+type DecryptError struct {
+	
+}
+
+func (e *DecryptError) Error() string {
+	return "Decryption Failed"
+}
+
 func ReadPassword(input string) []byte {
 	var n int
 	var err error
@@ -83,8 +108,16 @@ func Encrypt(block cipher.Block, clear, encrypt *os.File) error {
 	in := make([]byte, block.BlockSize())
 	out := make([]byte, block.BlockSize())
 	
+	copy(in, magic)
 	for {
-		n, err := clear.Read(in)
+		block.Encrypt(out, in)
+		
+		n, err := encrypt.Write(out)
+		if err != nil {
+			return err
+		}
+		
+		n, err = clear.Read(in)
 		if n == 0 {
 			break
 		} else if err != nil {
@@ -92,12 +125,6 @@ func Encrypt(block cipher.Block, clear, encrypt *os.File) error {
 		}
 		
 		clean(in, n)
-		block.Encrypt(out, in)
-		
-		_, err = encrypt.Write(out)
-		if err != nil {
-			return err
-		}
 	}	
 	
 	return nil
@@ -106,7 +133,8 @@ func Encrypt(block cipher.Block, clear, encrypt *os.File) error {
 func Decrypt(block cipher.Block, encrypt, clear *os.File) error {
 	in := make([]byte, block.BlockSize())
 	out := make([]byte, block.BlockSize())
-
+	good := false
+	
 	for {
 		n, err := encrypt.Read(in)
 		if n != block.BlockSize() {
@@ -116,6 +144,16 @@ func Decrypt(block cipher.Block, encrypt, clear *os.File) error {
 		}
 		
 		block.Decrypt(out, in)
+		
+		if !good {
+			for i := 0; i < len(magic); i++ {
+				if out[i] != magic[i] {
+					return new(DecryptError)
+				}
+			}
+			good = true
+			continue
+		}
 		
 		var i int
 		for i = 0; i < n; i++ {
@@ -134,13 +172,11 @@ func Decrypt(block cipher.Block, encrypt, clear *os.File) error {
 }
 
 func main() {
-	var output *os.File
 	var files []*os.File
 	var err error
 	
-	decrypt := flag.Bool("d", false, "Decrypt given files or stdin to output")
-	encrypt := flag.Bool("e", false, "Encrypt given files or stdin to output")
-	outputPath := flag.String("o", "/dev/stdout", "Redirect output to file")
+	decrypt := flag.Bool("d", false, "Decrypt given files or stdin")
+	encrypt := flag.Bool("e", false, "Encrypt given files or stdin")
 	inputPath := flag.String("p", "/dev/tty", "Read the password from this file")
 	
 	flag.Parse()
@@ -172,17 +208,18 @@ func main() {
 		files = append(files, file)
 	}
 	
-	output, err = os.Create(*outputPath)
-	if err != nil {
-		panic(err)
-	}
-	
 	for _, file := range files {
 		if *encrypt {
-			Encrypt(block, file, output)
+			err = Encrypt(block, file, os.Stdout)
 		} else if *decrypt {
-			Decrypt(block, file, output)
+			err = Decrypt(block, file, os.Stdout)
 		}
-		file.Close()
+
+		if err != nil {
+			fmt.Println("Error:", err)
+			os.Exit(1)
+		} else {
+			file.Close()
+		}
 	}
 }
