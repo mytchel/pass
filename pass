@@ -28,7 +28,7 @@ clear_clipboard() {
 	sleep $2
 	current="$(xsel -b -i)"
 	if [[ "$1" == "$current" ]]; then
-		echo nothing | xsel -b -i
+		echo 0 | xsel -b -i
 	fi
 }
 
@@ -72,9 +72,9 @@ cmd_edit() {
 
 	local tmp=$(mktemp)
 
-	echo "$password" | aes -p=/dev/stdin -o="$tmp" -d "$file" 2> /dev/null
+	echo "$password" | aes -p=/dev/stdin -d "$file" > "$tmp" 2> /dev/null
 	"$EDITOR" "$tmp"
-	echo "$password" | aes -p=/dev/stdin -o="$file" -e "$tmp" 2> /dev/null
+	echo "$password" | aes -p=/dev/stdin -e "$tmp" > "$file" 2> /dev/null
 	rm "$tmp"
 }
 
@@ -103,7 +103,7 @@ cmd_new() {
 	local tmp=$(mktemp)
 	
 	"$EDITOR" "$tmp"
-	echo "$password" | aes -p=/dev/stdin -o="$file" -e "$tmp" 2> /dev/null
+	echo "$password" | aes -p=/dev/stdin -e "$tmp" > "$file" 2> /dev/null
 	rm "$tmp"
 }
 
