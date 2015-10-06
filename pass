@@ -22,25 +22,16 @@ cmd_help() {
 	echo "    this function."
 }
 
-# Clear clipboard after $2's delay if contents of the clipboard
-# is still $1
-clear_clipboard() {
-	sleep $2
-	current="$(xsel -b -i)"
-	if [[ "$1" == "$current" ]]; then
-		echo 0 | xsel -b -i
-	fi
-}
-
 cmd_show() {
 	if [ -d "$1" ]; then
 		cmd_list "" "$1"
+		exit 0
 	fi
 
 	clipboard=0
 	if [ "$1" == "-c" ]; then
 		shift
-		output="xsel -b -i"
+		output="xsel -b -i -t 60000"
 		clipboard=1
 	else
 		output="cat"
@@ -113,14 +104,14 @@ cmd_mkdir() {
 }
 
 cmd_list() {
-	cd "$2"
+	cd "$STOREDIR/$2"
 	for f in *; do
 		if [ -d "$f" ]; then
 			echo "$1$f/"
-			cmd_list "$1   /" "$STOREDIR/$2/$f"
+			cmd_list "$1   " "$2/$f"
 			cd "$STOREDIR/$2"
 		else
-			echo "$1$f" | sed "s/.aes//"
+			echo "$1/$f" | sed "s/.aes//"
 		fi
 	done
 }
