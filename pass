@@ -43,7 +43,7 @@ cmd_show() {
 	[ ! -f "$file" ] && die "$1 does not exist."
 	
 	get_pass
-
+	
 	pass=`echo "$password" | aes -p=/dev/stdin -d "$file" 2> /dev/null`
 
 	if [ $clipboard -eq 1 ]; then
@@ -58,14 +58,17 @@ cmd_edit() {
 	
 	local file="$1.aes"
 	[ ! -f "$file" ] && die "$1 does not exist."
-
+	
 	get_pass
-
+	
 	local tmp=$(mktemp)
 
-	echo "$password" | aes -p=/dev/stdin -d "$file" > "$tmp" 2> /dev/null
+	(echo "$password" | aes -p=/dev/stdin -d "$file" > "$tmp" 2> /dev/null) || (rm "$tmp" && exit 1) 
+	
 	"$EDITOR" "$tmp"
+
 	echo "$password" | aes -p=/dev/stdin -e "$tmp" > "$file" 2> /dev/null
+
 	rm "$tmp"
 }
 
@@ -119,9 +122,10 @@ cmd_list() {
 get_pass() {
 	echo -n "Enter password: " >&2
 	stty -echo
-	exec 0</dev/tty
+	exec 3<&0 # save stdin
+	exec 0</dev/tty # re route stdin
 	read password
-	echo
+	exec 0<&3 # restore stdin
 	stty echo
 }
 
