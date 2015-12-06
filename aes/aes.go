@@ -74,7 +74,6 @@ func ReadPassword(input string) []byte {
 	C.noecho(C.int(tty.Fd()))
 	
 	data := make([]byte, CipherBlockSize)
-	fmt.Fprint(os.Stderr, "Enter pass: ")
 	n, err = tty.Read(data)
 	tty.Close()
 	if err != nil {
@@ -82,7 +81,6 @@ func ReadPassword(input string) []byte {
 	}
 	
 	C.resettermios(C.int(tty.Fd()))
-	fmt.Fprint(os.Stderr, "\n")
 
 	clean := false
 	for i := 0; i < n; i++ {
@@ -144,7 +142,6 @@ func Decrypt(block cipher.Block, encrypt, clear *os.File) error {
 		}
 		
 		block.Decrypt(out, in)
-		
 		if !good {
 			for i := 0; i < len(magic); i++ {
 				if out[i] != magic[i] {
@@ -175,9 +172,10 @@ func main() {
 	var files []*os.File
 	var err error
 	
-	decrypt := flag.Bool("d", false, "Decrypt given files or stdin")
-	encrypt := flag.Bool("e", false, "Encrypt given files or stdin")
-	inputPath := flag.String("p", "/dev/tty", "Read the password from this file")
+	decrypt := flag.Bool("d", false, "Decrypt given files or stdin.")
+	encrypt := flag.Bool("e", false, "Encrypt given files or stdin.")
+	prompt := flag.Bool("p", true, "Print a prompt to stdout.")
+	inputPath := flag.String("i", "/dev/tty", "Read the password from this file.")
 	
 	flag.Parse()
 
@@ -186,8 +184,17 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
+
+	if *prompt {
+		fmt.Fprint(os.Stderr, "Enter pass: ")
+	}
 	
 	pass := ReadPassword(*inputPath)
+	
+	if *prompt {
+		fmt.Fprint(os.Stderr, "\n")
+	}
+	
 	block, err := aes.NewCipher(pass)
 	if err != nil {
 		panic(err)
@@ -216,7 +223,7 @@ func main() {
 		}
 
 		if err != nil {
-			fmt.Println("Error:", err)
+			fmt.Fprintf(os.Stderr, "%s", err)
 			os.Exit(1)
 		} else {
 			file.Close()

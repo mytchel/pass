@@ -10,16 +10,35 @@ cd "$STOREDIR"
 
 [ -z "$EDITOR" ] && EDITOR=vi
 
+aes_command='aes -i=/dev/stdin -p=false'
+
 die() {
 	echo "$@" >&2
 	exit 1
 }
 
 cmd_help() {
-	echo "Help is for the weak. Grow some balls."
-	echo "PS: The strong AND smart one would first kill"
-	echo "    me for being a dick then properly implement"
-	echo "    this function."
+	echo "-h\n\tThis helpful menu."
+	echo "-a name\n\tAdd a new file."
+	echo "-d name\n\tDelete the file."
+	echo "-m name\n\tMake a new directory."
+	echo "-s name\n\tDecrypt and print the file to stdout"
+	echo "\t\tor list the files in the directory"
+	echo "-c name\n\tDecrypt and copy the file to clipboard."
+	echo "-e name\n\tDecrypt and open the file in an editor."
+}
+
+cmd_list() {
+	cd "$STOREDIR/$2"
+	for f in *; do
+		if [ -d "$f" ]; then
+			echo "$1$f/"
+			cmd_list "$1   " "$2/$f"
+			cd "$STOREDIR/$2"
+		else
+			echo "$1/$f" | sed "s/.aes//"
+		fi
+	done
 }
 
 cmd_show() {
@@ -28,48 +47,40 @@ cmd_show() {
 		exit 0
 	fi
 
-	clipboard=0
-	if [ "$1" == "-c" ]; then
-		shift
-		output="xsel -b -i -t 60000"
-		clipboard=1
-	else
-		output="cat"
-	fi
-
-	[ -z "$1" ] && die "Usage: $PROGRAM show [-c] file-name"
-	
 	local file="$1.aes"
 	[ ! -f "$file" ] && die "$1 does not exist."
 	
 	get_pass
 	
-	pass=`echo "$password" | aes -p=/dev/stdin -d "$file" 2> /dev/null`
+	local tmpfile=$(mktemp)
+	
+	echo "$password" \
+		| $aes_command -d "$file" > "$tmpfile" \
+			&& cat "$tmpfile" \
+			|| echo "Decryption Failed"
 
-	if [ $clipboard -eq 1 ]; then
-		clear_clipboard "$pass" 10 &
-	fi
-
-	echo "$pass" | eval "$output"
+	rm "$tmpfile"
 }
 
-cmd_edit() {
-	[ -z "$1" ] && die "Usage: $PROGRAM edit file-name"
-	
+cmd_copy() {
+	if [ -d "$1" ]; then
+		cmd_list "" "$1"
+		exit 0
+	fi
+
 	local file="$1.aes"
 	[ ! -f "$file" ] && die "$1 does not exist."
 	
 	get_pass
 	
-	local tmp=$(mktemp)
-
-	(echo "$password" | aes -p=/dev/stdin -d "$file" > "$tmp" 2> /dev/null) || (rm "$tmp" && exit 1) 
+	local tmpfile=$(mktemp)
 	
-	"$EDITOR" "$tmp"
+	echo "$password" \
+		| $aes_command -d "$file" > "$tmpfile" \
+			&& $(cat "$tmpfile" | xsel -b -i) \
+			|| echo "Decryption Failed"
 
-	echo "$password" | aes -p=/dev/stdin -e "$tmp" > "$file" 2> /dev/null
-
-	rm "$tmp"
+	rm "$tmpfile"
 }
 
 cmd_remove() {
@@ -97,26 +108,13 @@ cmd_new() {
 	local tmp=$(mktemp)
 	
 	"$EDITOR" "$tmp"
-	echo "$password" | aes -p=/dev/stdin -e "$tmp" > "$file" 2> /dev/null
+	echo "$password" | $aes_command -e "$tmp" > "$file"
 	rm "$tmp"
 }
 
 cmd_mkdir() {
 	[ -a "$1" ] && die "$1 exists"
 	mkdir "$1"
-}
-
-cmd_list() {
-	cd "$STOREDIR/$2"
-	for f in *; do
-		if [ -d "$f" ]; then
-			echo "$1$f/"
-			cmd_list "$1   " "$2/$f"
-			cd "$STOREDIR/$2"
-		else
-			echo "$1/$f" | sed "s/.aes//"
-		fi
-	done
 }
 
 get_pass() {
@@ -127,19 +125,18 @@ get_pass() {
 	read password
 	exec 0<&3 # restore stdin
 	stty echo
+	echo
 }
 
 [ -z "$1" ] && cmd_list "" "." && exit 0
 
 case "$1" in
-	init) shift;	cmd_init "${@}" ;;
-	help|-h) 	cmd_help ;;
-	new) shift;	cmd_new "${@}" ;;
-	mkdir) shift;	cmd_mkdir "${@}" ;;
-	show) shift;	cmd_show "${@}" ;;
-	rm) shift;	cmd_remove "${@}" ;;
-	rmdir) shift;   cmd_rmdir "${@}" ;;
-	edit) shift;	cmd_edit "${@}" ;;
-	*) 		cmd_show "${@}";;
+	-h)      	cmd_help ;;
+	-a) shift;	cmd_new "${@}" ;;
+	-m) shift;	cmd_mkdir "${@}" ;;
+	-s) shift;	cmd_show "${@}" ;;
+	-c) shift;	cmd_copy "${@}" ;;
+	-d) shift;	cmd_remove "${@}" ;;
+	-e) shift;	cmd_edit "${@}" ;;
 esac
 exit 0
