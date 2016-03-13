@@ -1,11 +1,8 @@
-# pass and aes
+# Pass
+## The Unix Password Manager
 
-aes is a simple go program that uses the crypto/aes library to encrypt and decrypt 
-files for you. It makes it as easy as `aes -e file-to-encrypt`.
-
-pass is a shell script that uses aes to encrypt files in a directory (`~/.secstore`)
-and make it easy for you to get them. It is intended as a very simple password 
-manager.
+Uses chained aes encryption to store passwords (or small notes) in a file
+that allows for easy modification and viewing of the stored passwords.
 
 ## origins
 
