@@ -1,29 +1,5 @@
 package main
 
-/*
-#include <termios.h>
-#include <stdio.h>
-#include <errno.h>
-
-struct termios tio;
-
-void noecho(int fd) {
-	struct termios tio;
-	tcgetattr(fd, &tio);
-	tio.c_lflag &= ~ECHO;
-	tcsetattr(fd, TCSANOW, &tio);
-}
-
-void savetermios(int fd) {
-	tcgetattr(fd, &tio);
-}
-
-void resettermios(int fd) {
-	tcsetattr(fd, TCSANOW, &tio);
-}
-*/
-import "C"
-
 import (
 	"fmt"
 	"os"
@@ -42,31 +18,6 @@ var show *string = flag.String("s", "", "Show a password.")
 var remove *string = flag.String("r", "", "Remove a password.")
 var edit *string = flag.String("e", "", "Edit a password.")
 var passwordIn *string = flag.String("P", "/dev/tty", "Where to read the unlock password from.")
-
-func ReadPassword() []byte {
-	var err error
-	
-	tty, err := os.Open(*passwordIn)
-	if err != nil {
-		panic(err)
-	}
-	
-	C.savetermios(C.int(tty.Fd()))
-	C.noecho(C.int(tty.Fd()))
-	
-	data := make([]byte, KeySize)
-	_, err = tty.Read(data)
-	tty.Close()
-	if err != nil {
-		panic(err)
-	}
-	
-	C.resettermios(C.int(tty.Fd()))
-	
-	fmt.Print("\n")
-
-	return data
-}
 
 func createNewPass(old, bytes []byte) []byte {
 	var n []byte
@@ -109,17 +60,12 @@ func decryptFile(pass []byte, file *os.File) ([]byte, error) {
 			return []byte(nil), err
 		}
 
-		fmt.Println("using pass: ", blockpass)
-		fmt.Println(" to decrypt ", cipher)
-
 		conv, err := aes.NewCipher(blockpass)
 		if err != nil {
 			return []byte(nil), err
 		}
 
 		conv.Decrypt(plain, cipher)
-
-		fmt.Println(" got: ", plain)
 
 		blockpass = createNewPass(blockpass, plain)
 		plainFull = append(plainFull, plain...)
@@ -130,7 +76,7 @@ func decryptFile(pass []byte, file *os.File) ([]byte, error) {
 
 func encryptBytes(pass, bytes []byte, file *os.File) error {
 	var plain, cipher, blockpass []byte
-	var n int
+	var n, nn int
 
 	plain = make([]byte, aes.BlockSize)
 	cipher = make([]byte, aes.BlockSize)
@@ -141,17 +87,17 @@ func encryptBytes(pass, bytes []byte, file *os.File) error {
 	copy(blockpass, pass)
 
 	for n < len(bytes) {
-		n += copy(plain, bytes[n:])
+		nn = copy(plain, bytes[n:])
+		for i := nn; i < len(plain); i++ {
+			plain[i] = 0
+		}
 
-		fmt.Println("using pass: ", blockpass)
-		fmt.Println(" for block: ", plain)
+		n += nn
 
 		conv, err := aes.NewCipher(blockpass)
 		if err != nil {
 			panic(err)
 		}
-
-		blockpass = createNewPass(blockpass, plain)
 
 		conv.Encrypt(cipher, plain)
 
@@ -159,6 +105,8 @@ func encryptBytes(pass, bytes []byte, file *os.File) error {
 		if err != nil {
 			return err
 		}
+		
+		blockpass = createNewPass(blockpass, plain)
 	}
 
 	return nil
@@ -233,14 +181,13 @@ func main() {
 	fmt.Print("Enter pass: ")
 	pass := ReadPassword()
 
+	fmt.Println("pass: ", string(pass))
+
 	plain, err = decryptFile(pass, file)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	file.Close()
-	fmt.Println("decrypted secstore: ", plain)
 
 	for i = 0; i < len(SecstoreStart); i++ {
 		if plain[i] != SecstoreStart[i] {
@@ -249,5 +196,43 @@ func main() {
 		}
 	}
 
-	fmt.Println("secstore succesfully decrypted")
+	fmt.Println("secstore succesfully decrypted with pass: ", string(pass))
+	fmt.Println("secstore:\n")
+	fmt.Println(string(plain))
+
+	if len(*makeNew) > 0 {
+		fmt.Println("Creating a new password: ", *makeNew)
+
+		newpart := MakeNewPart(*makeNew)
+		plain = append(plain, newpart...)
+
+	} else if len(*show) > 0 {
+		fmt.Println("showing :", *show)
+
+	} else if len(*remove) > 0 {
+		fmt.Println("Removing a password: ", *remove)
+	} else if len(*edit) > 0 {
+		fmt.Println("Editing a password: ", *edit)
+	} else {
+		fmt.Println("Showing a list of passwords...")
+	}
+
+	file.Close()
+	err = os.Remove(*secstore)
+	if err != nil {
+		panic(err)
+	}
+
+	file, err = os.Create(*secstore)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("encrypt with : ", string(pass))
+	err = encryptBytes(pass, plain, file)
+	if err != nil {
+		panic(err)
+	}
+
+	file.Close()
 }
