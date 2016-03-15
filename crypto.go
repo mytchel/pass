@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"crypto/aes"
+	"os"
 )
 
 const (
@@ -97,7 +97,7 @@ func EncryptBytes(pass, bytes []byte, file *os.File) error {
 		if err != nil {
 			return err
 		}
-		
+
 		blockpass = createNewPass(blockpass, plain)
 	}
 

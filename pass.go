@@ -31,25 +31,25 @@ import (
 
 func ReadPassword() []byte {
 	var err error
-	
+
 	tty, err := os.Open(*passwordIn)
 	if err != nil {
 		panic(err)
 	}
-	
+
 	C.savetermios(C.int(tty.Fd()))
 	C.noecho(C.int(tty.Fd()))
-	
+
 	data := make([]byte, KeySize)
 	_, err = tty.Read(data)
 	tty.Close()
 	if err != nil {
 		panic(err)
 	}
-	
+
 	C.resettermios(C.int(tty.Fd()))
-	
-	fmt.Print("\n\n")
+
+	fmt.Println()
 
 	for k, c := range data {
 		if c == '\n' {
@@ -59,4 +59,3 @@ func ReadPassword() []byte {
 
 	return data
 }
-

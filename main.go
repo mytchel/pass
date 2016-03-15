@@ -1,9 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
-	"flag"
 )
 
 var makeNew *string = flag.String("n", "", "Add a new password.")
@@ -60,7 +60,8 @@ func main() {
 	var file *os.File
 	var i int
 
-	secstorePath := flag.String("p", os.Getenv("HOME") + "/.secstore", "Path to secstore.")
+	secstorePath := flag.String("p", os.Getenv("HOME")+
+		"/.secstore", "Path to secstore file.")
 
 	flag.Usage = Usage
 
@@ -104,7 +105,7 @@ func main() {
 		}
 	}
 
-	secstore = ParseSecstore(plain)
+	secstore = ParseSecstore(plain[i:])
 
 	if len(*makeNew) > 0 {
 		secstore.MakeNewPart(*makeNew)
@@ -117,19 +118,13 @@ func main() {
 	} else if len(*list) > 0 {
 		secstore.ShowList(*list)
 	} else {
-		secstore.ShowList("")
+		secstore.ShowList(".*")
 	}
 
 	file.Close()
-	err = os.Remove(*secstorePath)
-	if err != nil {
-		fmt.Println("Error removing secstore" , *secstorePath, " : ", err)
-		os.Exit(1)
-	}
-
 	file, err = os.Create(*secstorePath)
 	if err != nil {
-		fmt.Println("Error recreating secstore" , *secstorePath, " : ", err)
+		fmt.Println("Error recreating secstore", *secstorePath, " : ", err)
 		os.Exit(1)
 	}
 
