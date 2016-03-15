@@ -78,27 +78,28 @@ func (store *Secstore) ToBytes() []byte {
 	return bytes
 }
 
-func (store *Secstore) FindPart(name string) (*Part, error) {
+func (store *Secstore) FindPart(name string) *Part {
 	var part *Part
 
 	regex, err := regexp.Compile(name)
 	if err != nil {
-		return nil, err
+		fmt.Println("Error creating regex: ", err)
+		return nil
 	}
 
 	for _, part = range(store.Parts) {
 		if regex.Match([]byte(part.Name)) {
-			return part, nil
+			return part
 		}
 	}
 
-	return nil, nil
+	return nil
 }
 
 func (store *Secstore) MakeNewPart(name string) {
 	var part *Part
 
-	part, _ = store.FindPart(name)
+	part = store.FindPart(name)
 	if part != nil {
 		fmt.Println(name, "already exists. Not adding.")
 		return
@@ -114,29 +115,41 @@ func (store *Secstore) MakeNewPart(name string) {
 	store.Parts = append(store.Parts, part)
 }
 
-func (store *Secstore) ShowPart(name string) {
-	part, err := store.FindPart(name)
-	if err != nil {
-		panic(err)
-	} else if part == nil {
-		fmt.Println(name, "not found")
-	} else {
-		fmt.Println(part.Data)
-	}
-}
-
 func (store *Secstore) RemovePart(name string) {
+	part := store.FindPart(name)
+	if part == nil {
+		fmt.Println(name, " not found")
+		return
+	}
+
 	fmt.Println("Removing: ", name)
 
+	parts := store.Parts
+	store.Parts = make([]*Part, len(parts) - 1)
+
+	i := 0
+	for _, p := range(parts) {
+		if p != part {
+			store.Parts[i] = p
+			i++
+		}
+	}
 }
 
 func (store *Secstore) EditPart(name string) {
 
 }
 
-func (store *Secstore) ShowList(pattern string) {
-	fmt.Println("Show list of passwords matching: ", pattern)
+func (store *Secstore) ShowPart(name string) {
+	part := store.FindPart(name)
+	if part == nil {
+		fmt.Println(name, "not found")
+	} else {
+		fmt.Println(part.Data)
+	}
+}
 
+func (store *Secstore) ShowList(pattern string) {
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		fmt.Println("Error creating regex: ", err)
