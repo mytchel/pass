@@ -4,112 +4,19 @@ import (
 	"fmt"
 	"os"
 	"flag"
-	"crypto/aes"
 )
-
-const (
-	KeySize = 32
-)
-
-var SecstoreStart []byte = []byte("Secstore.\n")
 
 var makeNew *string = flag.String("n", "", "Add a new password.")
 var show *string = flag.String("s", "", "Show a password.")
 var remove *string = flag.String("r", "", "Remove a password.")
 var edit *string = flag.String("e", "", "Edit a password.")
+var list *string = flag.String("l", "", "List passwords that match a patten.")
 var passwordIn *string = flag.String("P", "/dev/tty", "Where to read the unlock password from.")
 
-func createNewPass(old, bytes []byte) []byte {
-	var n []byte
-	var i int
-	var sum byte
-
-	n = make([]byte, KeySize)
-
-	sum = 0
-	for i = 0; i < len(bytes); i++ {
-		sum += bytes[i]
-	}
-
-	if sum == 0 {
-		sum = 1
-	}
-
-	for i = 0; i < KeySize; i++ {
-		n[i] = old[i] + sum
-	}
-
-	return n
-}
-
-func decryptFile(pass []byte, file *os.File) ([]byte, error) {
-	var plain, cipher, blockpass []byte
-	var plainFull []byte
-
-	plain = make([]byte, aes.BlockSize)
-	cipher = make([]byte, aes.BlockSize)
-	blockpass = make([]byte, KeySize)
-
-	copy(blockpass, pass)
-
-	for {
-		n, err := file.Read(cipher)
-		if n != aes.BlockSize {
-			break
-		} else if err != nil {
-			return []byte(nil), err
-		}
-
-		conv, err := aes.NewCipher(blockpass)
-		if err != nil {
-			return []byte(nil), err
-		}
-
-		conv.Decrypt(plain, cipher)
-
-		blockpass = createNewPass(blockpass, plain)
-		plainFull = append(plainFull, plain...)
-	}
-
-	return plainFull, nil
-}
-
-func encryptBytes(pass, bytes []byte, file *os.File) error {
-	var plain, cipher, blockpass []byte
-	var n, nn int
-
-	plain = make([]byte, aes.BlockSize)
-	cipher = make([]byte, aes.BlockSize)
-	blockpass = make([]byte, KeySize)
-
-	n = 0
-
-	copy(blockpass, pass)
-
-	for n < len(bytes) {
-		nn = copy(plain, bytes[n:])
-		for i := nn; i < len(plain); i++ {
-			plain[i] = 0
-		}
-
-		n += nn
-
-		conv, err := aes.NewCipher(blockpass)
-		if err != nil {
-			panic(err)
-		}
-
-		conv.Encrypt(cipher, plain)
-
-		_, err = file.Write(cipher)
-		if err != nil {
-			return err
-		}
-		
-		blockpass = createNewPass(blockpass, plain)
-	}
-
-	return nil
+func Usage() {
+	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+	flag.PrintDefaults()
+	fmt.Fprintln(os.Stderr, "If no arguments are given then it is interpreted as -l '.*'")
 }
 
 func initNewSecstore(file *os.File) error {
@@ -142,24 +49,27 @@ func initNewSecstore(file *os.File) error {
 		}
 	}
 
-	err = encryptBytes(pass1, SecstoreStart, file)
+	err = EncryptBytes(pass1, SecstoreStart, file)
 	return err
 }
 
 func main() {
+	var secstore *Secstore
 	var err error
 	var plain []byte
 	var file *os.File
 	var i int
 
-	secstore := flag.String("p", os.Getenv("HOME") + "/.secstore", "Path to secstore.")
+	secstorePath := flag.String("p", os.Getenv("HOME") + "/.secstore", "Path to secstore.")
+
+	flag.Usage = Usage
 
 	flag.Parse()
 
-	file, err = os.Open(*secstore)
+	file, err = os.Open(*secstorePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			file, err = os.Create(*secstore)
+			file, err = os.Create(*secstorePath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -181,9 +91,7 @@ func main() {
 	fmt.Print("Enter pass: ")
 	pass := ReadPassword()
 
-	fmt.Println("pass: ", string(pass))
-
-	plain, err = decryptFile(pass, file)
+	plain, err = DecryptFile(pass, file)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -191,48 +99,48 @@ func main() {
 
 	for i = 0; i < len(SecstoreStart); i++ {
 		if plain[i] != SecstoreStart[i] {
-			fmt.Println("Could not decrypt secstore")
+			fmt.Println("Failed to decrypt secstore")
 			os.Exit(1)
 		}
 	}
 
-	fmt.Println("secstore succesfully decrypted with pass: ", string(pass))
-	fmt.Println("secstore:\n")
-	fmt.Println(string(plain))
+	secstore = ParseSecstore(plain)
 
 	if len(*makeNew) > 0 {
-		fmt.Println("Creating a new password: ", *makeNew)
-
-		newpart := MakeNewPart(*makeNew)
-		plain = append(plain, newpart...)
-
+		secstore.MakeNewPart(*makeNew)
 	} else if len(*show) > 0 {
-		fmt.Println("showing :", *show)
-
+		secstore.ShowPart(*show)
 	} else if len(*remove) > 0 {
-		fmt.Println("Removing a password: ", *remove)
+		secstore.RemovePart(*remove)
 	} else if len(*edit) > 0 {
-		fmt.Println("Editing a password: ", *edit)
+		secstore.EditPart(*edit)
+	} else if len(*list) > 0 {
+		secstore.ShowList(*list)
 	} else {
-		fmt.Println("Showing a list of passwords...")
+		secstore.ShowList("")
 	}
 
 	file.Close()
-	err = os.Remove(*secstore)
+	err = os.Remove(*secstorePath)
 	if err != nil {
-		panic(err)
+		fmt.Println("Error removing secstore" , *secstorePath, " : ", err)
+		os.Exit(1)
 	}
 
-	file, err = os.Create(*secstore)
+	file, err = os.Create(*secstorePath)
 	if err != nil {
-		panic(err)
+		fmt.Println("Error recreating secstore" , *secstorePath, " : ", err)
+		os.Exit(1)
 	}
 
-	fmt.Println("encrypt with : ", string(pass))
-	err = encryptBytes(pass, plain, file)
+	plain = secstore.ToBytes()
+
+	err = EncryptBytes(pass, plain, file)
 	if err != nil {
-		panic(err)
+		fmt.Println("Error encrypting secstore : ", err)
+		os.Exit(1)
 	}
 
 	file.Close()
+	os.Exit(0)
 }
