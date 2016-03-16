@@ -11,27 +11,28 @@ const (
 
 var SecstoreStart []byte = []byte("Secstore.\n")
 
-func createNewPass(old, bytes []byte) []byte {
-	var n []byte
-	var i int
-	var sum byte
+func createNewPass(oldKey, bytes []byte) []byte {
+	var newKey, both []byte
+	var i, sum, start int
 
-	n = make([]byte, KeySize)
+	both = make([]byte, len(oldKey) + len(bytes))
+	copy(both, oldKey)
+	copy(both[len(oldKey):], bytes)
 
 	sum = 0
-	for i = 0; i < len(bytes); i++ {
-		sum += bytes[i]
+	for i = 0; i < len(both); i++ {
+		sum += int(both[i])
 	}
 
-	if sum == 0 {
-		sum = 1
-	}
+	start = sum % (len(both) - KeySize)
+
+	newKey = both[start:(start + KeySize)]
 
 	for i = 0; i < KeySize; i++ {
-		n[i] = old[i] + sum
+		newKey[i] = byte(int(newKey[i]) + sum)
 	}
 
-	return n
+	return newKey
 }
 
 func DecryptFile(pass []byte, file *os.File) ([]byte, error) {
