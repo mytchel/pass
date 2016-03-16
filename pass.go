@@ -32,7 +32,7 @@ import (
 func ReadPassword() []byte {
 	var err error
 
-	tty, err := os.Open(*passwordIn)
+	tty, err := os.Open("/dev/tty")
 	if err != nil {
 		panic(err)
 	}

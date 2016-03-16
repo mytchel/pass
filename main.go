@@ -12,10 +12,10 @@ var remove *string = flag.String("r", "", "Remove a password.")
 var edit *string = flag.String("e", "", "Edit a password.")
 var list *string = flag.String("l", "", "List passwords that match a patten.")
 
+var changePass *bool = flag.Bool("P", false, "Change secstore password.")
+
 var dump *bool = flag.Bool("D", false, "Dump secstore to stdout unencrypted.")
 var read *string = flag.String("R", "", "Read a clear text secstore and add it to the secstore.")
-
-var passwordIn *string = flag.String("P", "/dev/tty", "Where to read the unlock password from.")
 
 func Usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
@@ -23,14 +23,11 @@ func Usage() {
 	fmt.Fprintln(os.Stderr, "If no arguments are given then it is interpreted as -l '.*'")
 }
 
-func initNewSecstore(file *os.File) error {
+func getNewPass() []byte {
 	var pass1, pass2 []byte
 	var good bool = false
-	var err error
 
-	fmt.Fprintln(os.Stderr, "Creating a new secstore...")
-	fmt.Fprint(os.Stderr, "Enter the password to encrypt it with: ")
-
+	fmt.Fprint(os.Stderr, "Password: ")
 	for !good {
 		pass1 = ReadPassword()
 		fmt.Fprint(os.Stderr, "And again: ")
@@ -53,7 +50,19 @@ func initNewSecstore(file *os.File) error {
 		}
 	}
 
-	err = EncryptBytes(pass1, SecstoreStart, file)
+	return pass1
+}
+
+func initNewSecstore(file *os.File) error {
+	var err error
+	var pass []byte
+
+	fmt.Fprintln(os.Stderr, "Creating a new secstore...")
+	fmt.Fprintln(os.Stderr, "Enter the password to encrypt it with: ")
+
+	pass = getNewPass()
+
+	err = EncryptBytes(pass, SecstoreStart, file)
 	return err
 }
 
@@ -137,7 +146,10 @@ func main() {
 
 	secstore = ParseSecstore(plain[start:])
 	
-	if len(*makeNew) > 0 {
+	if *changePass {
+		fmt.Fprintln(os.Stderr, "Changing password...")
+		pass = getNewPass()
+	} else if len(*makeNew) > 0 {
 		secstore.MakeNewPart(*makeNew)
 	} else if len(*show) > 0 {
 		secstore.ShowPart(*show)
