@@ -11,6 +11,10 @@ var show *string = flag.String("s", "", "Show a password.")
 var remove *string = flag.String("r", "", "Remove a password.")
 var edit *string = flag.String("e", "", "Edit a password.")
 var list *string = flag.String("l", "", "List passwords that match a patten.")
+
+var dump *bool = flag.Bool("D", false, "Dump secstore to stdout unencrypted.")
+var read *string = flag.String("R", "", "Read a clear text secstore and add it to the secstore.")
+
 var passwordIn *string = flag.String("P", "/dev/tty", "Where to read the unlock password from.")
 
 func Usage() {
@@ -24,12 +28,12 @@ func initNewSecstore(file *os.File) error {
 	var good bool = false
 	var err error
 
-	fmt.Println("Creating a new secstore...")
-	fmt.Print("Enter the password to encrypt it with: ")
+	fmt.Fprintln(os.Stderr, "Creating a new secstore...")
+	fmt.Fprint(os.Stderr, "Enter the password to encrypt it with: ")
 
 	for !good {
 		pass1 = ReadPassword()
-		fmt.Print("And again: ")
+		fmt.Fprint(os.Stderr, "And again: ")
 		pass2 = ReadPassword()
 
 		if len(pass1) != len(pass2) {
@@ -45,7 +49,7 @@ func initNewSecstore(file *os.File) error {
 		}
 
 		if !good {
-			fmt.Print("Passwords did not match.\nTry again: ")
+			fmt.Fprint(os.Stderr, "Passwords did not match.\nTry again: ")
 		}
 	}
 
@@ -58,7 +62,7 @@ func main() {
 	var err error
 	var plain []byte
 	var file *os.File
-	var i int
+	var start int
 
 	secstorePath := flag.String("p", os.Getenv("HOME")+
 		"/.secstore", "Path to secstore file.")
@@ -69,14 +73,15 @@ func main() {
 
 	file, err = os.Open(*secstorePath)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error reading secstore")
 		if os.IsNotExist(err) {
 			file, err = os.Create(*secstorePath)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			} else {
 				if initNewSecstore(file) != nil {
-					fmt.Println(err)
+					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				} else {
 					file.Close()
@@ -84,29 +89,54 @@ func main() {
 				}
 			}
 		} else {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	}
 
-	fmt.Print("Enter pass: ")
+	fmt.Fprint(os.Stderr, "Enter pass: ")
 	pass := ReadPassword()
 
 	plain, err = DecryptFile(pass, file)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	
+	file.Close()
 
-	for i = 0; i < len(SecstoreStart); i++ {
-		if plain[i] != SecstoreStart[i] {
-			fmt.Println("Failed to decrypt secstore")
+	for start = 0; start < len(SecstoreStart); start++ {
+		if plain[start] != SecstoreStart[start] {
+			fmt.Fprintln(os.Stderr, "Failed to decrypt secstore")
 			os.Exit(1)
 		}
 	}
 
-	secstore = ParseSecstore(plain[i:])
+	if *dump {
+		fmt.Println(string(plain[start:]))
+		os.Exit(0)
+	} else if len(*read) > 0 {
+		adding, err := os.Open(*read)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error reading file to add: ", err)
+			os.Exit(1)
+		}
 
+		bytes := make([]byte, 16)
+		for {
+			n, err := adding.Read(bytes)
+			if err != nil {
+				break
+			}
+
+			plain = append(plain, bytes[:n]...)
+		}
+
+		adding.Close()
+	}
+
+	secstore = ParseSecstore(plain[start:])
+	
 	if len(*makeNew) > 0 {
 		secstore.MakeNewPart(*makeNew)
 	} else if len(*show) > 0 {
@@ -121,10 +151,9 @@ func main() {
 		secstore.ShowList(".*")
 	}
 
-	file.Close()
 	file, err = os.Create(*secstorePath)
 	if err != nil {
-		fmt.Println("Error recreating secstore", *secstorePath, " : ", err)
+		fmt.Fprintln(os.Stderr, "Error recreating secstore", *secstorePath, " : ", err)
 		os.Exit(1)
 	}
 
@@ -132,7 +161,7 @@ func main() {
 
 	err = EncryptBytes(pass, plain, file)
 	if err != nil {
-		fmt.Println("Error encrypting secstore : ", err)
+		fmt.Fprintln(os.Stderr, "Error encrypting secstore : ", err)
 		os.Exit(1)
 	}
 

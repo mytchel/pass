@@ -249,7 +249,7 @@ func OpenEditor(data string) (string, error) {
 		return "", err
 	}
 
-	/* Read in data */
+	/* Read in new data */
 
 	file, err = os.Open(tmpPath)
 	if err != nil {

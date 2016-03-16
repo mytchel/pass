@@ -49,7 +49,7 @@ func ReadPassword() []byte {
 
 	C.resettermios(C.int(tty.Fd()))
 
-	fmt.Println()
+	fmt.Fprintln(os.Stderr)
 
 	for k, c := range data {
 		if c == '\n' {
