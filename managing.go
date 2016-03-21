@@ -11,19 +11,22 @@ import (
 type Part struct {
 	Name string
 	Data string
+	Next *Part
 }
 
 type Secstore struct {
-	Parts []*Part
+	Parts *Part
 }
 
 func ParseSecstore(secstoreRaw []byte) *Secstore {
 	var i, j, l int
 	var line, pname, pdata []byte
-	var part *Part
+	var part, head, prev *Part
 	var secstore *Secstore
 
-	secstore = new(Secstore)
+	head = new(Part)
+	head.Next = nil
+	prev = head
 
 	l = len(secstoreRaw)
 	i = 0
@@ -58,20 +61,26 @@ func ParseSecstore(secstoreRaw []byte) *Secstore {
 		part = new(Part)
 		part.Name = string(pname)
 		part.Data = string(pdata)
+		part.Next = nil
 
-		secstore.Parts = append(secstore.Parts, part)
+		prev.Next = part
+		prev = part
 	}
+	
+	secstore = new(Secstore)
+	secstore.Parts = head.Next
 
 	return secstore
 }
 
 func (store *Secstore) ToBytes() []byte {
 	var bytes []byte
+	var part *Part
 
 	bytes = make([]byte, len(SecstoreStart))
 	copy(bytes, SecstoreStart)
 
-	for _, part := range store.Parts {
+	for part = store.Parts; part != nil; part = part.Next {
 		bytes = append(bytes, []byte(part.Name)...)
 		bytes = append(bytes, ':')
 		bytes = append(bytes, []byte(part.Data)...)
@@ -90,7 +99,7 @@ func (store *Secstore) FindPart(name string) *Part {
 		return nil
 	}
 
-	for _, part = range store.Parts {
+	for part = store.Parts; part != nil; part = part.Next {
 		if regex.Match([]byte(part.Name)) {
 			return part
 		}
@@ -100,22 +109,24 @@ func (store *Secstore) FindPart(name string) *Part {
 }
 
 func (store *Secstore) RemovePart(name string) {
-	part := store.FindPart(name)
+	var part, p *Part
+
+	part = store.FindPart(name)
 	if part == nil {
 		fmt.Println(name, " not found")
 		return
 	}
 
-	fmt.Println("Removing: ", name)
+	fmt.Println("Removing: ", part.Name)
 
-	parts := store.Parts
-	store.Parts = make([]*Part, len(parts)-1)
+	if store.Parts == part {
+		store.Parts = part.Next
+		return
+	}
 
-	i := 0
-	for _, p := range parts {
-		if p != part {
-			store.Parts[i] = p
-			i++
+	for p = store.Parts; p != nil; p = p.Next {
+		if p.Next == part {
+			p.Next = part.Next
 		}
 	}
 }
@@ -136,7 +147,7 @@ func (store *Secstore) ShowList(pattern string) {
 		return
 	}
 
-	for _, part := range store.Parts {
+	for part := store.Parts; part != nil; part = part.Next {
 		if regex.Match([]byte(part.Name)) {
 			fmt.Println(part.Name)
 		}
@@ -162,7 +173,8 @@ func (store *Secstore) MakeNewPart(name string) {
 	} else {
 		part.Name = name
 		fmt.Println("Adding part with name: ", name)
-		store.Parts = append(store.Parts, part)
+		part.Next = store.Parts
+		store.Parts = part
 	}
 }
 
