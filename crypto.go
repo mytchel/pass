@@ -1,15 +1,21 @@
 package main
 
 import (
-	"crypto/aes"
+	"fmt"
 	"os"
+	"crypto/aes"
 )
 
 const (
 	KeySize = 32
 )
 
-var SecstoreStart []byte = []byte("Secstore.\n")
+var SecstoreStart []byte = []byte{
+	10,	3,	2,	9,
+	11,	84,	122,	254,
+	112,	38,	10,	23,
+	83,	119,	43,	99,
+}
 
 func createNewPass(oldKey, bytes []byte) []byte {
 	var newKey, both []byte
@@ -36,10 +42,10 @@ func createNewPass(oldKey, bytes []byte) []byte {
 }
 
 func DecryptFile(pass []byte, file *os.File) ([]byte, error) {
-	var plain, cipher, blockpass []byte
-	var plainFull []byte
+	var clear, cipher, blockpass []byte
+	var plain []byte
 
-	plain = make([]byte, aes.BlockSize)
+	clear = make([]byte, aes.BlockSize)
 	cipher = make([]byte, aes.BlockSize)
 	blockpass = make([]byte, KeySize)
 
@@ -52,19 +58,25 @@ func DecryptFile(pass []byte, file *os.File) ([]byte, error) {
 		} else if err != nil {
 			return []byte(nil), err
 		}
-
+		
 		conv, err := aes.NewCipher(blockpass)
 		if err != nil {
 			return []byte(nil), err
 		}
 
-		conv.Decrypt(plain, cipher)
+		conv.Decrypt(clear, cipher)
 
-		blockpass = createNewPass(blockpass, plain)
-		plainFull = append(plainFull, plain...)
+		blockpass = createNewPass(blockpass, clear)
+		plain = append(plain, clear...)
 	}
 
-	return plainFull, nil
+	for i := 0; i < aes.BlockSize; i++ {
+		if SecstoreStart[i] != plain[i] {
+			return nil, fmt.Errorf("Failed to decrypt")
+		}
+	}
+
+	return plain[aes.BlockSize:], nil
 }
 
 func EncryptBytes(pass, bytes []byte, file *os.File) error {
@@ -78,15 +90,9 @@ func EncryptBytes(pass, bytes []byte, file *os.File) error {
 	n = 0
 
 	copy(blockpass, pass)
+	copy(plain, SecstoreStart)
 
-	for n < len(bytes) {
-		nn = copy(plain, bytes[n:])
-		for i := nn; i < len(plain); i++ {
-			plain[i] = 0
-		}
-
-		n += nn
-
+	for {
 		conv, err := aes.NewCipher(blockpass)
 		if err != nil {
 			panic(err)
@@ -99,7 +105,18 @@ func EncryptBytes(pass, bytes []byte, file *os.File) error {
 			return err
 		}
 
+		if n >= len(bytes) {
+			break
+		}
+
 		blockpass = createNewPass(blockpass, plain)
+
+		nn = copy(plain, bytes[n:])
+		for i := nn; i < len(plain); i++ {
+			plain[i] = 0
+		}
+
+		n += nn
 	}
 
 	return nil

@@ -18,9 +18,9 @@ type Secstore struct {
 	Parts *Part
 }
 
-func ParseSecstore(secstoreRaw []byte) *Secstore {
+func ParseSecstore(bytes []byte) (*Secstore, error) {
 	var i, j, l int
-	var line, pname, pdata []byte
+	var pname, pdata []byte
 	var part, head, prev *Part
 	var secstore *Secstore
 
@@ -28,35 +28,24 @@ func ParseSecstore(secstoreRaw []byte) *Secstore {
 	head.Next = nil
 	prev = head
 
-	l = len(secstoreRaw)
+	l = len(bytes)
 	i = 0
-	for i < l {
-		for j = i; j < l; j++ {
-			if secstoreRaw[j] == 0 {
-				break
-			}
-		}
-
+	for i < l && bytes[i] != 0 {
+		for j = i; j < l && bytes[j] != 0; j++ {}
 		if j == l {
-			break
+			return nil, fmt.Errorf("Error parsing secstore: Reached end.")
 		}
 
-		line = secstoreRaw[i:j]
-
+		pname = bytes[i:j]
 		i = j + 1
 
-		for j = 0; j < len(line); j++ {
-			if line[j] == ':' {
-				break
-			}
+		for j = i; j < l && bytes[j] != 0; j++ {}
+		if j == l {
+			return nil, fmt.Errorf("Error parsing secstore: Reached end.")
 		}
 
-		if j == len(line) {
-			continue
-		}
-
-		pname = line[0:j]
-		pdata = line[j+1:]
+		pdata = bytes[i:j]
+		i = j + 1
 
 		part = new(Part)
 		part.Name = string(pname)
@@ -70,19 +59,19 @@ func ParseSecstore(secstoreRaw []byte) *Secstore {
 	secstore = new(Secstore)
 	secstore.Parts = head.Next
 
-	return secstore
+	return secstore, nil
 }
 
 func (store *Secstore) ToBytes() []byte {
 	var bytes []byte
 	var part *Part
 
-	bytes = make([]byte, len(SecstoreStart))
+	bytes = []byte(nil)
 	copy(bytes, SecstoreStart)
 
 	for part = store.Parts; part != nil; part = part.Next {
 		bytes = append(bytes, []byte(part.Name)...)
-		bytes = append(bytes, ':')
+		bytes = append(bytes, 0)
 		bytes = append(bytes, []byte(part.Data)...)
 		bytes = append(bytes, 0)
 	}
