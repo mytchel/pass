@@ -6,11 +6,11 @@ import (
 	"os"
 )
 
-var makeNew *string = flag.String("n", "", "Add a new password.")
+var makePart *string = flag.String("n", "", "Add a new password.")
+var makeDir *string = flag.String("m", "", "Add a new directory.")
 var show *string = flag.String("s", "", "Show a password.")
 var remove *string = flag.String("r", "", "Remove a password.")
 var edit *string = flag.String("e", "", "Edit a password.")
-var list *string = flag.String("l", "", "List passwords that match a patten.")
 
 var changePass *bool = flag.Bool("P", false, "Change secstore password.")
 
@@ -119,18 +119,18 @@ func main() {
 	if *changePass {
 		fmt.Fprintln(os.Stderr, "Changing password...")
 		pass = getNewPass()
-	} else if len(*makeNew) > 0 {
-		secstore.MakeNewPart(*makeNew)
+	} else if len(*makePart) > 0 {
+		secstore.MakeNewPart(*makePart)
+	} else if len(*makeDir) > 0 {
+		secstore.MakeNewDirPart(*makeDir)
 	} else if len(*show) > 0 {
 		secstore.ShowPart(*show)
 	} else if len(*remove) > 0 {
 		secstore.RemovePart(*remove)
 	} else if len(*edit) > 0 {
 		secstore.EditPart(*edit)
-	} else if len(*list) > 0 {
-		secstore.ShowList(*list)
 	} else {
-		secstore.ShowList(".*")
+		secstore.Parts.Print()
 	}
 
 	file, err = os.Create(*secstorePath)

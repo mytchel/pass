@@ -10,12 +10,7 @@ const (
 	KeySize = 32
 )
 
-var SecstoreStart []byte = []byte{
-	10,	3,	2,	9,
-	11,	84,	122,	254,
-	112,	38,	10,	23,
-	83,	119,	43,	99,
-}
+var SecstoreStart []byte = []byte("SecstorePass 0.1")
 
 func createNewPass(oldKey, bytes []byte) []byte {
 	var newKey, both []byte
