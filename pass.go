@@ -5,9 +5,9 @@ package main
 #include <stdio.h>
 #include <errno.h>
 
-struct termios tio;
+struct termios tio_save;
 
-void noecho(int fd) {
+void setnoecho(int fd) {
 	struct termios tio;
 	tcgetattr(fd, &tio);
 	tio.c_lflag &= ~ECHO;
@@ -15,11 +15,11 @@ void noecho(int fd) {
 }
 
 void savetermios(int fd) {
-	tcgetattr(fd, &tio);
+	tcgetattr(fd, &tio_save);
 }
 
 void resettermios(int fd) {
-	tcsetattr(fd, TCSANOW, &tio);
+	tcsetattr(fd, TCSANOW, &tio_save);
 }
 */
 import "C"
@@ -31,23 +31,17 @@ import (
 
 func ReadPassword() []byte {
 	var err error
+	var data []byte = make([]byte, KeySize)
 
-	tty, err := os.Open("/dev/tty")
+	C.savetermios(C.int(os.Stdin.Fd()))
+	C.setnoecho(C.int(os.Stdin.Fd()))
+
+	_, err = os.Stdin.Read(data)
 	if err != nil {
 		panic(err)
 	}
 
-	C.savetermios(C.int(tty.Fd()))
-	C.noecho(C.int(tty.Fd()))
-
-	data := make([]byte, KeySize)
-	_, err = tty.Read(data)
-	tty.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	C.resettermios(C.int(tty.Fd()))
+	C.resettermios(C.int(os.Stdin.Fd()))
 
 	fmt.Fprintln(os.Stderr)
 

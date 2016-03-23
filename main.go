@@ -6,18 +6,21 @@ import (
 	"os"
 )
 
-var makePart *string = flag.String("n", "", "Add a new password.")
+var makePart *string = flag.String("a", "", "Add a new password.")
 var makeDir *string = flag.String("m", "", "Add a new directory.")
 var show *string = flag.String("s", "", "Show a password.")
-var remove *string = flag.String("r", "", "Remove a password.")
+var remove *string = flag.String("d", "", "Remove a password.")
 var edit *string = flag.String("e", "", "Edit a password.")
 
+var repl *bool = flag.Bool("R", false, "Drop to a repl for editing and showing passwords.")
 var changePass *bool = flag.Bool("P", false, "Change secstore password.")
+
+var secstorePath *string
 
 func Usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 	flag.PrintDefaults()
-	fmt.Fprintln(os.Stderr, "If no arguments are given then it is interpreted as -l '.*'")
+	fmt.Fprintln(os.Stderr, "If no arguments are given then a list of passwords and directories in the root of the tree will be listed.")
 }
 
 func getNewPass() []byte {
@@ -69,7 +72,7 @@ func main() {
 	var plain []byte
 	var file *os.File
 
-	secstorePath := flag.String("p", os.Getenv("HOME")+
+	secstorePath = flag.String("p", os.Getenv("HOME")+
 		"/.secstore", "Path to secstore file.")
 
 	flag.Usage = Usage
@@ -119,6 +122,8 @@ func main() {
 	if *changePass {
 		fmt.Fprintln(os.Stderr, "Changing password...")
 		pass = getNewPass()
+	} else if *repl {
+		RunRepl(secstore)
 	} else if len(*makePart) > 0 {
 		secstore.MakeNewPart(*makePart)
 	} else if len(*makeDir) > 0 {
