@@ -130,7 +130,7 @@ func main() {
 	} else if len(*edit) > 0 {
 		secstore.EditPart(*edit)
 	} else {
-		secstore.Parts.Print()
+		secstore.List()
 	}
 
 	file, err = os.Create(*secstorePath)
