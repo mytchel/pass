@@ -32,16 +32,24 @@ import (
 func ReadPassword() []byte {
 	var err error
 	var data []byte = make([]byte, KeySize)
+	var tty *os.File
 
-	C.savetermios(C.int(os.Stdin.Fd()))
-	C.setnoecho(C.int(os.Stdin.Fd()))
-
-	_, err = os.Stdin.Read(data)
+	tty, err = os.Open("/dev/tty")
 	if err != nil {
 		panic(err)
 	}
 
-	C.resettermios(C.int(os.Stdin.Fd()))
+	C.savetermios(C.int(os.Stdin.Fd()))
+	C.setnoecho(C.int(tty.Fd()))
+
+	_, err = tty.Read(data)
+	if err != nil {
+		panic(err)
+	}
+
+	C.resettermios(C.int(tty.Fd()))
+
+	tty.Close()
 
 	fmt.Fprintln(os.Stderr)
 
