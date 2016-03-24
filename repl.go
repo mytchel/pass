@@ -79,32 +79,45 @@ func splitSections(bytes []byte) []string {
 func evalLine(secstore *Secstore, line []string) (bool, error) {
 	if len(line) < 1 {
 		return false, nil
-	} else if line[0] == "q" {
-		return true, nil
-	}
-
-	if len(line) < 2 {
-		return false, fmt.Errorf("Commands need a part name as an argument")
 	}
 
 	switch (line[0]) {
+	case "q":
+		return true, nil
 	case "a":
-		fmt.Println("add")
-		secstore.MakeNewPart(line[1])
+		if len(line) != 2 {
+			return false, fmt.Errorf("Usage: a 'new pass name'")
+		} else {
+			secstore.MakeNewPart(line[1])
+		}
 	case "m":
-		fmt.Println("mkdir")
-		secstore.MakeNewDirPart(line[1])
+		if len(line) != 2 {
+			return false, fmt.Errorf("Usage: m 'new dir name'")
+		} else {
+			secstore.MakeNewDirPart(line[1])
+		}
 	case "s":
-		fmt.Println("show")
-		secstore.ShowPart(line[1])
+		if len(line) == 1 {
+			secstore.List()
+		} else {
+			for i := 1; i < len(line); i++ {
+				secstore.ShowPart(line[i])
+			}
+		}
 	case "d": 
-		fmt.Println("delete")
-		secstore.RemovePart(line[1])
+		if len(line) < 2 {
+			return false, fmt.Errorf("Usage: d 'pass or dir name'")
+		} else {
+			secstore.RemovePart(line[1])
+		}
 	case "e":
-		fmt.Println("edit")
-		secstore.EditPart(line[1])
+		if len(line) < 2 {
+			return false, fmt.Errorf("Usage: e 'pass name'")
+		} else {
+			secstore.EditPart(line[1])
+		}
 	default:
-		return false, fmt.Errorf("%s: not a command\n", line[0])
+		return false, fmt.Errorf("%s: not a command", line[0])
 	}
 
 	return false, nil

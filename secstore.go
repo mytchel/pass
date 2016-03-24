@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"crypto/rand"
 )
 
 type Secstore struct {
@@ -41,19 +42,31 @@ func (store *Secstore) FindPart(name string) *Part {
 }
 
 func (store *Secstore) RemovePart(name string) {
-	var part, p *Part
+	var p, part, parent *Part
+	var path string
 
 	part = store.FindPart(name)
 	if part == nil {
-		fmt.Println(name, " not found")
+		fmt.Fprintln(os.Stderr, name, "does not exist")
 		return
 	}
+	
+	path, _ = splitLast(name, '/')
+	if len(path) > 0 {
+		parent = store.partRoot.FindSub(path)
+	} else {
+		parent = store.partRoot
+	}
 
-	fmt.Println("Removing: ", part.Name)
+	fmt.Fprintln(os.Stderr, "Removing", name)
 
-	for p = store.partRoot; p != nil; p = p.Next {
-		if p.Next == part {
-			p.Next = part.Next
+	if parent.SubParts == part {
+		parent.SubParts = part.Next
+	} else {
+		for p = parent.SubParts; p != nil; p = p.Next {
+			if p.Next == part {
+				p.Next = part.Next
+			}
 		}
 	}
 }
@@ -126,6 +139,35 @@ func (store *Secstore) addPart(fpath string) (*Part, error) {
 	return part, nil
 }
 
+func randomPass() string {
+	var sum, r int
+	var b []byte
+	var err error
+
+	b = make([]byte, 24)
+	_, err = rand.Read(b)
+
+	if err != nil {
+		return "Error generating random bytes!"
+	} 
+
+	sum = 0
+	for i := 0; i < len(b); i++ {
+		sum += int(b[i])
+		r = sum % 3
+		switch (r) {
+		case 0:
+			b[i] = 'a' + b[i] % 26
+		case 1:
+			b[i] = 'A' + b[i] % 26
+		case 2:
+			b[i] = '0' + b[i] % 10
+		}
+	}
+
+	return string(b)
+}
+
 func (store *Secstore) MakeNewPart(name string) {
 	part, err := store.addPart(name)
 	if err != nil {
@@ -133,7 +175,7 @@ func (store *Secstore) MakeNewPart(name string) {
 		return
 	}
 
-	part.Data, _ = OpenEditor("Store your note/password here (remove this).")
+	part.Data, _ = OpenEditor(randomPass())
 	fmt.Println("Adding password:", name)
 }
 
