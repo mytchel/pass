@@ -40,14 +40,14 @@ func ReadPassword() []byte {
 	}
 
 	C.savetermios(C.int(os.Stdin.Fd()))
-	C.setnoecho(C.int(tty.Fd()))
+	C.setnoecho(C.int(os.Stdin.Fd()))
 
 	_, err = tty.Read(data)
 	if err != nil {
 		panic(err)
 	}
 
-	C.resettermios(C.int(tty.Fd()))
+	C.resettermios(C.int(os.Stdin.Fd()))
 
 	tty.Close()
 
