@@ -4,6 +4,11 @@
 Uses chained aes encryption to store passwords (or small notes) in a file
 that allows for easy modification and viewing of the stored passwords.
 
+Passwords can be organised into directory trees like in a file system.
+
+There is a repl to make multiple changes not require typing your password
+half a dozen times.
+
 ## origins
 
 This all came about due to me switching to OpenBSD and discovering that 

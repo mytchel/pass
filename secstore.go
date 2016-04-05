@@ -8,23 +8,26 @@ import (
 
 type Secstore struct {
 	partRoot *Part
+	pwd *Part
 }
 
 func ParseSecstore(bytes []byte) (*Secstore, error) {
 	var err error
-	var secstore *Secstore
+	var store *Secstore
 
-	secstore = new(Secstore)
+	store = new(Secstore)
 
-	secstore.partRoot = new(Part)
-	secstore.partRoot.Name = "/"
+	store.partRoot = new(Part)
+	store.partRoot.Name = "/"
 	
-	secstore.partRoot.SubParts, _, err = ParseParts(bytes)
+	store.partRoot.SubParts, _, err = ParseParts(bytes, store.partRoot)
 	if err != nil {
 		return nil, err
 	}
 	
-	return secstore, nil
+	store.pwd = store.partRoot
+
+	return store, nil
 }
 
 func (store *Secstore) ToBytes() []byte {
@@ -38,7 +41,23 @@ func (store *Secstore) ToBytes() []byte {
 }
 
 func (store *Secstore) FindPart(name string) *Part {
-	return store.partRoot.FindSub(name)
+	return store.pwd.FindSub(name)
+}
+
+func (store *Secstore) ChangeDir(name string) {
+	var n *Part
+
+	if name == ".." {
+		n = store.pwd.Parent
+	} else {
+		n = store.FindPart(name)
+	}
+
+	if n != nil {
+		store.pwd = n
+	} else {
+		fmt.Fprintln(os.Stderr, name, "does not exist")
+	}
 }
 
 func (store *Secstore) RemovePart(name string) {
@@ -81,7 +100,7 @@ func (store *Secstore) ShowPart(name string) {
 }
 
 func (store *Secstore) List() {
-	store.partRoot.Print()
+	store.pwd.Print()
 }
 
 func (store *Secstore) EditPart(name string) {

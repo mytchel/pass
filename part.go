@@ -11,15 +11,16 @@ type Part struct {
 	Data string
 	SubParts *Part
 
-	Next *Part
+	Parent, Next *Part
 }
 
-func ParsePart(bytes []byte) (*Part, int, error) {
+func ParsePart(bytes []byte, parent *Part) (*Part, int, error) {
 	var j, k int
 	var part *Part
 	var err error
 
 	part = new(Part)
+	part.Parent = parent
 
 	for j = 0; j < len(bytes) && bytes[j] != 0; j++ {}
 	if j == len(bytes) {
@@ -40,7 +41,7 @@ func ParsePart(bytes []byte) (*Part, int, error) {
 	/* Sub tree */
 	} else {
 		part.Data = ""
-		part.SubParts, j, err = ParseParts(bytes[k+1:])
+		part.SubParts, j, err = ParseParts(bytes[k+1:], part)
 		k = k + 1 + j
 		if err != nil {
 			return nil, k, err
@@ -50,7 +51,7 @@ func ParsePart(bytes []byte) (*Part, int, error) {
 	return part, k, nil
 }
 
-func ParseParts(bytes []byte) (*Part, int, error) {
+func ParseParts(bytes []byte, parent *Part) (*Part, int, error) {
 	var i, j int
 	var part, head, prev *Part
 	var err error
@@ -60,7 +61,7 @@ func ParseParts(bytes []byte) (*Part, int, error) {
 	
 	i = 0
 	for i < len(bytes) && bytes[i] != 0 {
-		part, j, err = ParsePart(bytes[i:])
+		part, j, err = ParsePart(bytes[i:], parent)
 		if err != nil {
 			return nil, i + j, err
 		}

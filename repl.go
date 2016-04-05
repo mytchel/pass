@@ -116,6 +116,12 @@ func evalLine(secstore *Secstore, line []string) (bool, error) {
 		} else {
 			secstore.EditPart(line[1])
 		}
+	case "c":
+		if len(line) < 2 {
+			return false, fmt.Errorf("Usage: c 'dir'\n\tUsing .. as dir will go to the parent directory.")
+		} else {
+			secstore.ChangeDir(line[1])
+		}
 	default:
 		return false, fmt.Errorf("%s: not a command", line[0])
 	}
