@@ -72,9 +72,9 @@ func (store *Secstore) RemovePart(name string) {
 	
 	path, _ = splitLast(name, '/')
 	if len(path) > 0 {
-		parent = store.partRoot.FindSub(path)
+		parent = store.Pwd.FindSub(path)
 	} else {
-		parent = store.partRoot
+		parent = store.Pwd
 	}
 
 	fmt.Fprintln(os.Stderr, "Removing", name)
