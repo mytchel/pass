@@ -144,13 +144,14 @@ func (store *Secstore) addPart(fpath string) (*Part, error) {
 	
 	path, name = splitLast(fpath, '/')
 	if len(path) > 0 {
-		parent = store.partRoot.FindSub(path)
+		parent = store.Pwd.FindSub(path)
 	} else {
-		parent = store.partRoot
+		parent = store.Pwd
 	}
 
 	part = new(Part)
 	part.Name = name
+	part.Parent = parent
 
 	part.Next = parent.SubParts
 	parent.SubParts = part
