@@ -4,33 +4,33 @@ import (
 	"fmt"
 	"os"
 	"unicode"
+
+	"github.com/peterh/liner"
 )
 
-const (
-	LineLen = 512
-)
+var replStore *Secstore
 
 func RunRepl(secstore *Secstore) {
-	var bytes []byte = make([]byte, LineLen)
 	var sections []string
-	var line []byte
-	var n int
+	var line string
 	var err error
 	var quit bool = false
 
+
+	liner := liner.NewLiner()
+	defer liner.Close()
+
+	replStore = secstore
+
+	liner.SetCompleter(linerCompleter)
+
 	for {
-		fmt.Printf("> ")
-		n, err = os.Stdin.Read(bytes)
+		line, err = liner.Prompt("> ")
 		if err != nil {
 			break
 		}
-	
-		for i := 0; i < n; i++ {
-			if bytes[i] == '\n' {
-				line = bytes[:i]
-				break
-			}
-		}
+
+		liner.AppendHistory(line)
 
 		sections = splitSections(line)
 
@@ -43,36 +43,37 @@ func RunRepl(secstore *Secstore) {
 	}
 }
 
-func splitSections(bytes []byte) []string {
-	var s, i, j int
+func linerCompleter(line string) (c []string) {
+	return
+}
+
+func splitSections(s string) (sections []string) {
+	var i, j int
 	var quote bool = false
-	var sections []string = []string(nil)
-	var section []byte = make([]byte, LineLen)
+	var section string
 	
 	i = 0
-	for i < len(bytes) {
-		s = 0
-		for j = i; j < len(bytes); j++ {
-			if bytes[j] == '\'' {
+	for i < len(s) {
+		section = ""
+		for j = i; j < len(s); j++ {
+			if s[j] == '\'' {
 				quote = !quote
-			} else if unicode.IsSpace(rune(bytes[j])) && !quote {
+			} else if unicode.IsSpace(rune(s[j])) && !quote {
 				break		
 			} else {
-				section[s] = bytes[j]
-				s++
+				section = section + string(s[j])
 			}
 		}
 
-		sections = append(sections, string(section[:s]))
+		sections = append(sections, section)
 
-		for i = j; i < len(bytes); i++ {
-			if !unicode.IsSpace(rune(bytes[i])) {
+		for i = j; i < len(s); i++ {
+			if !unicode.IsSpace(rune(s[i])) {
 				break		
 			}
 		}
+	}
 
-}
-	
 	return sections
 }
 

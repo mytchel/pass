@@ -43,11 +43,13 @@ func ReadPassword() []byte {
 	C.setnoecho(C.int(os.Stdin.Fd()))
 
 	_, err = tty.Read(data)
+	
+	C.resettermios(C.int(os.Stdin.Fd()))
+	
 	if err != nil {
 		panic(err)
 	}
 
-	C.resettermios(C.int(os.Stdin.Fd()))
 
 	tty.Close()
 
