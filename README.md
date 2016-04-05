@@ -9,6 +9,10 @@ Passwords can be organised into directory trees like in a file system.
 There is a repl to make multiple changes not require typing your password
 half a dozen times.
 
+#### Requirements
+
+Go and github.com/peterh/liner for repl support.
+
 ## origins
 
 This all came about due to me switching to OpenBSD and discovering that 

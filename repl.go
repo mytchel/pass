@@ -8,21 +8,14 @@ import (
 	"github.com/peterh/liner"
 )
 
-var replStore *Secstore
-
 func RunRepl(secstore *Secstore) {
 	var sections []string
 	var line string
 	var err error
 	var quit bool = false
 
-
 	liner := liner.NewLiner()
 	defer liner.Close()
-
-	replStore = secstore
-
-	liner.SetCompleter(linerCompleter)
 
 	for {
 		line, err = liner.Prompt("> ")
@@ -41,10 +34,6 @@ func RunRepl(secstore *Secstore) {
 			break
 		}
 	}
-}
-
-func linerCompleter(line string) (c []string) {
-	return
 }
 
 func splitSections(s string) (sections []string) {

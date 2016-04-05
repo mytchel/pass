@@ -8,7 +8,7 @@ import (
 
 type Secstore struct {
 	partRoot *Part
-	pwd *Part
+	Pwd *Part
 }
 
 func ParseSecstore(bytes []byte) (*Secstore, error) {
@@ -25,7 +25,7 @@ func ParseSecstore(bytes []byte) (*Secstore, error) {
 		return nil, err
 	}
 	
-	store.pwd = store.partRoot
+	store.Pwd = store.partRoot
 
 	return store, nil
 }
@@ -41,20 +41,20 @@ func (store *Secstore) ToBytes() []byte {
 }
 
 func (store *Secstore) FindPart(name string) *Part {
-	return store.pwd.FindSub(name)
+	return store.Pwd.FindSub(name)
 }
 
 func (store *Secstore) ChangeDir(name string) {
 	var n *Part
 
 	if name == ".." {
-		n = store.pwd.Parent
+		n = store.Pwd.Parent
 	} else {
 		n = store.FindPart(name)
 	}
 
 	if n != nil {
-		store.pwd = n
+		store.Pwd = n
 	} else {
 		fmt.Fprintln(os.Stderr, name, "does not exist")
 	}
@@ -100,7 +100,7 @@ func (store *Secstore) ShowPart(name string) {
 }
 
 func (store *Secstore) List() {
-	store.pwd.Print()
+	store.Pwd.Print()
 }
 
 func (store *Secstore) EditPart(name string) {
