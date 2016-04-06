@@ -13,6 +13,7 @@ var remove *string = flag.String("d", "", "Remove a password.")
 var edit *string = flag.String("e", "", "Edit a password.")
 
 var repl *bool = flag.Bool("R", false, "Drop to a repl for editing and showing passwords.")
+var list *bool = flag.Bool("l", false, "List the root of the tree.")
 var changePass *bool = flag.Bool("P", false, "Change secstore password.")
 
 var secstorePath *string
@@ -20,7 +21,7 @@ var secstorePath *string
 func Usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 	flag.PrintDefaults()
-	fmt.Fprintln(os.Stderr, "If no arguments are given then a list of passwords and directories in the root of the tree will be listed.")
+	fmt.Fprintln(os.Stderr, "If no arguments are given -R is assumed.")
 }
 
 func getNewPass() []byte {
@@ -122,6 +123,8 @@ func main() {
 	if *changePass {
 		fmt.Fprintln(os.Stderr, "Changing password...")
 		pass = getNewPass()
+	} else if *list {
+		secstore.List()
 	} else if *repl {
 		RunRepl(secstore)
 	} else if len(*makePart) > 0 {
@@ -135,7 +138,7 @@ func main() {
 	} else if len(*edit) > 0 {
 		secstore.EditPart(*edit)
 	} else {
-		secstore.List()
+		RunRepl(secstore)
 	}
 
 	file, err = os.Create(*secstorePath)
