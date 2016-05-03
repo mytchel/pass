@@ -29,14 +29,13 @@ import (
 	"os"
 )
 
-func ReadPassword() []byte {
+func ReadPassword() ([]byte, error) {
 	var err error
 	var data []byte = make([]byte, KeySize)
 	var tty *os.File
 
-	tty, err = os.Open("/dev/tty")
-	if err != nil {
-		panic(err)
+	if tty, err = os.Open("/dev/tty"); err != nil {
+		return nil, err
 	}
 
 	C.savetermios(C.int(os.Stdin.Fd()))
@@ -47,7 +46,7 @@ func ReadPassword() []byte {
 	C.resettermios(C.int(os.Stdin.Fd()))
 	
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 
@@ -61,5 +60,42 @@ func ReadPassword() []byte {
 		}
 	}
 
-	return data
+	return data, nil
 }
+
+func GetNewPass() ([]byte, error) {
+	var pass1, pass2 []byte
+	var good bool = false
+	var err error
+
+	fmt.Fprint(os.Stderr, "New Password: ")
+	for !good {
+		if pass1, err = ReadPassword(); err != nil {
+			return nil, err
+		}
+
+		fmt.Fprint(os.Stderr, "And again: ")
+		if pass2, err = ReadPassword(); err != nil {
+			return nil, err
+		}
+
+		if len(pass1) != len(pass2) {
+			good = false
+		} else {
+			good = true
+			for k, _ := range pass1 {
+				if pass1[k] != pass2[k] {
+					good = false
+					break
+				}
+			}
+		}
+
+		if !good {
+			fmt.Fprint(os.Stderr, "Passwords did not match.\nTry again: ")
+		}
+	}
+
+	return pass1, nil
+}
+

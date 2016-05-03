@@ -2,10 +2,16 @@ package main
 
 import (
 	"fmt"
-	"strings"
+)
+
+const (
+	TypeDir = 1
+	TypeData = 2
 )
 
 type Part struct {
+	Type int
+
 	Name string
 
 	Data string
@@ -36,11 +42,12 @@ func ParsePart(bytes []byte, parent *Part) (*Part, int, error) {
 	
 	/* Data part */
 	if k > j + 1 {
+		part.Type = TypeData
 		part.Data = string(bytes[j+1:k])
 
 	/* Sub tree */
 	} else {
-		part.Data = ""
+		part.Type = TypeDir
 		part.SubParts, j, err = ParseParts(bytes[k+1:], part)
 		k = k + 1 + j
 		if err != nil {
@@ -81,7 +88,7 @@ func (part *Part) ToBytes() []byte {
 	bytes = append(bytes, []byte(part.Name)...)
 	bytes = append(bytes, 0)
 
-	if part.Data == "" {
+	if part.Type == TypeDir {
 		bytes = append(bytes, 0)
 		for part := part.SubParts; part != nil; part = part.Next {
 			bytes = append(bytes, part.ToBytes()...)
@@ -96,30 +103,76 @@ func (part *Part) ToBytes() []byte {
 }
 
 func (part *Part) Print() {
-	if part.Data == "" {
+	if part.Type == TypeDir {
+		if part.Parent != nil {
+			fmt.Println("..")
+		}
+
 		for p := part.SubParts; p != nil; p = p.Next {
 			fmt.Printf("%s", p.Name)
-			if p.Data == "" {
+			if p.Type == TypeDir {
 				fmt.Printf("/")
 			}
 			fmt.Printf("\n")
 		}
 	} else {
-		fmt.Println(part.Data)
+		fmt.Printf("%s", part.Data)
 	}
 }
 
-func (part *Part) FindSub(pathRaw string) *Part {
-	path := strings.SplitN(pathRaw, "/", 2)
-
-	for p := part.SubParts; p != nil; p = p.Next {
-		if p.Name == path[0] {
-			if len(path) > 1 && len(path[1]) > 0 {
-				return p.FindSub(path[1])
-			} else {
-				return p
+func (part *Part) FindSub(path []string) *Part {
+	if len(path) == 0{
+		return part
+	} else if path[0] == ".." {
+		if len(path) > 1 {
+			return part.Parent.FindSub(path[1:])
+		} else {
+			return part.Parent
+		}
+	} else {
+		for p := part.SubParts; p != nil; p = p.Next {
+			if path[0] == p.Name {
+				if len(path) > 1 {
+					return p.FindSub(path[1:])
+				} else {
+					return p
+				}
 			}
 		}
+	}
+
+	return nil
+}
+
+func (part *Part) AddPart(o *Part) error {
+	var p *Part
+
+	if part.Type != TypeDir {
+		return fmt.Errorf("'%s' is not a directory.", part.Name)
+	}
+
+	if part.SubParts == nil {
+		part.SubParts = o
+	} else {
+		for p = part.SubParts; p.Next != nil; p = p.Next {}
+		p.Next = o
+	}
+
+	return nil
+}
+
+func (part *Part) RemovePart(o *Part) error {
+	var p *Part
+
+	if part.Type != TypeDir {
+		return fmt.Errorf("'%s' is not a directory.", part.Name)
+	}
+
+	if part.SubParts == o {
+		part.SubParts = part.SubParts.Next
+	} else {
+		for p = part.SubParts; p.Next != o; p = p.Next {}
+		p.Next = o.Next
 	}
 
 	return nil

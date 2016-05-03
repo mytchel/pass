@@ -3,150 +3,192 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"crypto/rand"
 )
 
 type Secstore struct {
-	partRoot *Part
+	rootPart *Part
 	Pwd *Part
+	Pass []byte
 }
 
-func ParseSecstore(bytes []byte) (*Secstore, error) {
+func (store *Secstore) DecryptFile(file *os.File) error {
 	var err error
-	var store *Secstore
+	var plain []byte
 
-	store = new(Secstore)
-
-	store.partRoot = new(Part)
-	store.partRoot.Name = "/"
-	
-	store.partRoot.SubParts, _, err = ParseParts(bytes, store.partRoot)
+	plain, err = DecryptFile(store.Pass, file)
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	store.rootPart = new(Part)
+	store.rootPart.Type = TypeDir
+	store.rootPart.Name = "/"
+	
+	store.rootPart.SubParts, _, err = ParseParts(plain, store.rootPart)
+	if err != nil {
+		return err
 	}
 	
-	store.Pwd = store.partRoot
+	store.Pwd = store.rootPart
 
-	return store, nil
+	return nil
 }
 
-func (store *Secstore) ToBytes() []byte {
+func (store *Secstore) EncryptToFile(file *os.File) error {
 	var bytes []byte = []byte(nil)
 
-	for part := store.partRoot.SubParts; part != nil; part = part.Next {
+	for part := store.rootPart.SubParts; part != nil; part = part.Next {
 		bytes = append(bytes, part.ToBytes()...)
 	}
 
-	return bytes
+	return EncryptBytes(store.Pass, bytes, file)
 }
 
-func (store *Secstore) FindPart(name string) *Part {
-	return store.Pwd.FindSub(name)
+func ChangePass(store *Secstore, args []string) error {
+	var pass []byte
+	var err error
+
+	if pass, err = GetNewPass(); err != nil {
+		return err
+	}
+
+	store.Pass = pass
+	return nil
 }
 
-func (store *Secstore) ChangeDir(name string) {
+func ChangeDir(store *Secstore, args []string) error {
 	var n *Part
 
-	if name == ".." {
-		n = store.Pwd.Parent
+	if len (args) == 0 {
+		store.Pwd = store.rootPart
+		return nil
+	} else if len(args) > 1 {
+		return fmt.Errorf("usage: cd [dir]")
 	} else {
-		n = store.FindPart(name)
-	}
-
-	if n != nil {
-		store.Pwd = n
-	} else {
-		fmt.Fprintln(os.Stderr, name, "does not exist")
+		path := strings.Split(args[0], "/")
+		if n = store.Pwd.FindSub(path); n != nil {
+			store.Pwd = n
+			return nil
+		} else {
+			return fmt.Errorf("'%s' does not exist.", args[0])
+		}
 	}
 }
 
-func (store *Secstore) RemovePart(name string) {
-	var p, part, parent *Part
-	var path string
-
-	part = store.FindPart(name)
-	if part == nil {
-		fmt.Fprintln(os.Stderr, name, "does not exist")
-		return
-	}
-	
-	path, _ = splitLast(name, '/')
-	if len(path) > 0 {
-		parent = store.Pwd.FindSub(path)
+func RemovePart(store *Secstore, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: rm part1 part2...")
 	} else {
-		parent = store.Pwd
-	}
+		for _, arg := range args {
+			path := strings.Split(arg, "/")
+			part := store.Pwd.FindSub(path)
 
-	fmt.Fprintln(os.Stderr, "Removing", name)
-
-	if parent.SubParts == part {
-		parent.SubParts = part.Next
-	} else {
-		for p = parent.SubParts; p != nil; p = p.Next {
-			if p.Next == part {
-				p.Next = part.Next
+			if part == nil {
+				return fmt.Errorf("'%s' does not exist.", args[0])
+			} else if part.Parent == nil {
+				return fmt.Errorf("Not removing root dir.")
+			}
+			
+			if err := part.Parent.RemovePart(part); err != nil {
+				return err
 			}
 		}
+		return nil
 	}
 }
 
-func (store *Secstore) ShowPart(name string) {
-	part := store.FindPart(name)
+func ShowPart(store *Secstore, args []string) error {
+	var path []string
+	
+	if len(args) > 0 {
+		path = strings.Split(args[0], "/")
+	} else {
+		path = []string(nil)
+	}
+
+	part := store.Pwd.FindSub(path)
 	if part == nil {
-		fmt.Println(name, "not found")
+		return fmt.Errorf("'%s' does not exist.", args[0])
 	} else {
 		part.Print()
+		return nil
 	}
 }
 
-func (store *Secstore) List() {
-	store.Pwd.Print()
-}
+func EditPart(store *Secstore, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("usage: edit part")
+	}
 
-func (store *Secstore) EditPart(name string) {
-	var part *Part
-	var err error
-	var data string
+	path := strings.Split(args[0], "/")
 
-	part = store.FindPart(name)
+	part := store.Pwd.FindSub(path)
 	if part == nil {
-		fmt.Println(name, "not found.")
-	} else if part.Data == "" {
-		fmt.Println(name, "is a directory.")
+		return fmt.Errorf("'%s' does not exist.", args[0])
+	} else if part.Type == TypeDir {
+		return fmt.Errorf("'%s' is a directory.", args[0])
 	} else {
-		data, err = OpenEditor(part.Data)
-		if err != nil {
-			fmt.Println("Not saving. Error running editor:", err)
+		if data, err := OpenEditor(part.Data); err != nil {
+			return fmt.Errorf("Not saving. Error running editor:", err)
 		} else {
 			part.Data = data
+			return nil
 		}
 	}
 }
 
-func splitLast(s string, sep rune) (main, last string) {
-	for i := len(s) - 1; i >= 0; i-- {
-		if rune(s[i]) == sep {
-			return s[:i], s[i+1:]
-		}
+func AddDataPart(store *Secstore, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("usage: add name")
 	}
 
-	return "", s
+	path := strings.Split(args[0], "/")
+	if part, err := store.addPart(path); err == nil {
+		part.Type = TypeData
+		part.Data, _ = OpenEditor(randomPass())
+		return nil
+	} else {
+		return err
+	}
 }
 
-func (store *Secstore) addPart(fpath string) (*Part, error) {
+func AddDirPart(store *Secstore, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("usage: mkdir name")
+	}
+
+	path := strings.Split(args[0], "/")
+	if part, err := store.addPart(path); err != nil {
+		part.Type = TypeDir
+		part.SubParts = nil
+		return nil
+	} else {
+		return err
+	}
+}
+
+func MovePart(store *Secstore, args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("usage: mv part1 dest")
+	}
+
+	return nil	
+}
+
+func (store *Secstore) addPart(path []string) (*Part, error) {
 	var part, parent *Part
-	var path, name string
 
-	part = store.FindPart(fpath)
-	if part != nil {
-		return nil, fmt.Errorf("%s already exists", fpath)
+	if part = store.Pwd.FindSub(path); part != nil {
+		return nil, fmt.Errorf("'%s' already exists.", path)
 	}
 	
-	path, name = splitLast(fpath, '/')
-	if len(path) > 0 {
-		parent = store.Pwd.FindSub(path)
-	} else {
-		parent = store.Pwd
+	ppath := path[0:len(path) - 1]
+	name := path[len(path) - 1]
+
+	if parent = store.Pwd.FindSub(ppath); parent == nil {
+		return nil, fmt.Errorf("Parent '%s' does not exist.", ppath)
 	}
 
 	part = new(Part)
@@ -158,6 +200,7 @@ func (store *Secstore) addPart(fpath string) (*Part, error) {
 
 	return part, nil
 }
+
 
 func randomPass() string {
 	var sum, r int
@@ -188,26 +231,3 @@ func randomPass() string {
 	return string(b)
 }
 
-func (store *Secstore) MakeNewPart(name string) {
-	part, err := store.addPart(name)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-
-	part.Data, _ = OpenEditor(randomPass())
-	fmt.Println("Adding password:", name)
-}
-
-func (store *Secstore) MakeNewDirPart(name string) {
-	part, err := store.addPart(name)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-
-	part.Data = ""
-	part.SubParts = nil
-
-	fmt.Println("Adding directory:", name)
-}

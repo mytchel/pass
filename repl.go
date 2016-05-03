@@ -8,31 +8,40 @@ import (
 	"github.com/peterh/liner"
 )
 
-func RunRepl(secstore *Secstore) {
+var lineReader *liner.State
+
+var commands = map[string](func(*Secstore, []string) error) {
+	"chpass": 	ChangePass,
+	"new":		AddDataPart,
+	"mkdir":	AddDirPart,
+	"show":		ShowPart,
+	"rm":		RemovePart,
+	"edit":		EditPart,
+	"cd":		ChangeDir,
+	"mv":		MovePart,
+}
+
+func RunRepl(store *Secstore) {
 	var sections []string
 	var line string
 	var err error
-	var quit bool = false
 
-	liner := liner.NewLiner()
-	defer liner.Close()
+	lineReader = liner.NewLiner()
 
 	for {
-		line, err = liner.Prompt("> ")
+		line, err = lineReader.Prompt("> ")
 		if err != nil {
 			break
 		}
 
-		liner.AppendHistory(line)
+		lineReader.AppendHistory(line)
 
 		sections = splitSections(line)
 
-		quit, err = evalLine(secstore, sections)
+		err = evalLine(store, sections)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-		} else if quit {
-			break
-		}
+		} 
 	}
 }
 
@@ -66,55 +75,34 @@ func splitSections(s string) (sections []string) {
 	return sections
 }
 
-func evalLine(secstore *Secstore, line []string) (bool, error) {
-	if len(line) < 1 {
-		return false, nil
+func quit(store *Secstore) error {
+	if err := SaveSecstore(store); err != nil {
+		return err
+	} else {
+		lineReader.Close()
+		os.Exit(0)
+		return nil
 	}
-
-	switch (line[0]) {
-	case "q":
-		return true, nil
-	case "a":
-		if len(line) != 2 {
-			return false, fmt.Errorf("Usage: a 'new pass name'")
-		} else {
-			secstore.MakeNewPart(line[1])
-		}
-	case "m":
-		if len(line) != 2 {
-			return false, fmt.Errorf("Usage: m 'new dir name'")
-		} else {
-			secstore.MakeNewDirPart(line[1])
-		}
-	case "s":
-		if len(line) == 1 {
-			secstore.List()
-		} else {
-			for i := 1; i < len(line); i++ {
-				secstore.ShowPart(line[i])
-			}
-		}
-	case "d": 
-		if len(line) < 2 {
-			return false, fmt.Errorf("Usage: d 'pass or dir name'")
-		} else {
-			secstore.RemovePart(line[1])
-		}
-	case "e":
-		if len(line) < 2 {
-			return false, fmt.Errorf("Usage: e 'pass name'")
-		} else {
-			secstore.EditPart(line[1])
-		}
-	case "c":
-		if len(line) < 2 {
-			return false, fmt.Errorf("Usage: c 'dir'\n\tUsing .. as dir will go to the parent directory.")
-		} else {
-			secstore.ChangeDir(line[1])
-		}
-	default:
-		return false, fmt.Errorf("%s: not a command", line[0])
-	}
-
-	return false, nil
 }
+
+func evalLine(store *Secstore, line []string) error {
+	if len(line) < 1 {
+		return nil
+	}
+
+	if line[0] == "quit" {
+		quit(store)
+		return nil
+	} else {
+		if f := commands[line[0]]; f != nil {
+			if len(line) > 1 {
+				return f(store, line[1:])
+			} else {
+				return f(store, []string(nil))
+			}
+		} else {
+			return fmt.Errorf("No command matching '%s' found.", line[0])
+		}
+	}
+}
+
