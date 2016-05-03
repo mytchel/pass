@@ -10,10 +10,9 @@ const (
 )
 
 type Part struct {
-	Type int
-
 	Name string
-
+	
+	Type int
 	Data string
 	SubParts *Part
 
@@ -121,8 +120,10 @@ func (part *Part) Print() {
 }
 
 func (part *Part) FindSub(path []string) *Part {
-	if len(path) == 0{
+	if len(path) == 0 {
 		return part
+	} else if path[0] == "." || len(path[0]) == 0 {
+		return part.FindSub(path[1:])
 	} else if path[0] == ".." {
 		if len(path) > 1 {
 			return part.Parent.FindSub(path[1:])

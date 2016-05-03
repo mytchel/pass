@@ -12,9 +12,10 @@ var lineReader *liner.State
 
 var commands = map[string](func(*Secstore, []string) error) {
 	"chpass": 	ChangePass,
-	"new":		AddDataPart,
+	"add":		AddDataPart,
 	"mkdir":	AddDirPart,
 	"show":		ShowPart,
+	"ls":		ShowPart,
 	"rm":		RemovePart,
 	"edit":		EditPart,
 	"cd":		ChangeDir,
