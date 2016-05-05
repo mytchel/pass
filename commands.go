@@ -4,7 +4,22 @@ import (
 	"fmt"
 	"strings"
 	"crypto/rand"
+	"os"
 )
+
+var commands = map[string](func(*Secstore, []string) error) {
+	"chpass": 	ChangePass,
+	"add":		AddDataPart,
+	"mkdir":	AddDirPart,
+	"show":		ShowPart,
+	"ls":		ShowPart,
+	"rm":		RemovePart,
+	"edit":		EditPart,
+	"cd":		ChangeDir,
+	"mv":		MovePart,
+	"help":		Help,
+	"quit":		Quit,
+}
 
 func randomPass() string {
 	var sum, r int
@@ -194,3 +209,53 @@ func MovePart(store *Secstore, args []string) error {
 	return nil	
 }
 
+func Help(store *Secstore, args []string) error {
+	fmt.Println("Commands can be shortened, eg: quit can be called with q.\n")
+	fmt.Println("chpass\t\tChange encryption password.")
+	fmt.Println("add name\tAdd a new password and start editing it.")
+	fmt.Println("mkdir name\tMake a new directory.")
+	fmt.Println("show name\tShow password or directory.")
+	fmt.Println("ls name\t\tAlias for show.")
+	fmt.Println("rm name\t\tRemove a password or directory.")
+	fmt.Println("edit name\tEdit a password.")
+	fmt.Println("cd dir\t\tChange directory.")
+	fmt.Println("mv old new\tMove a password or directory from new to old.")
+	fmt.Println("help\t\tPrint this.")
+	fmt.Println("quit\t\tSave and exit.")
+	return nil
+}
+
+func Quit(store *Secstore, args []string) error {
+	if err := SaveSecstore(store); err != nil {
+		return err
+	} else {
+		if LineReader != nil {
+			LineReader.Close()
+		}
+
+		os.Exit(0)
+		return nil
+	}
+}
+
+func MatchCommand(cmd string) (func(*Secstore, []string) error, error) {
+	var f func(*Secstore, []string) error
+
+	found := false
+	for c, g := range(commands) {
+		if strings.HasPrefix(c, cmd) {
+			if found {
+				return nil, fmt.Errorf("'%s' matches multiple commands.", cmd)
+			} else {
+				found = true
+				f = g
+			}
+		}
+	}
+
+	if f == nil {
+		return nil, fmt.Errorf("No commands match '%s'.", cmd)
+	} else {
+		return f, nil
+	}
+}

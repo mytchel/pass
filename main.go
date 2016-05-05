@@ -4,9 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	
+	"github.com/peterh/liner"
 )
 
 var secstorePath *string
+
+var LineReader *liner.State
 
 func Usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
@@ -43,6 +47,10 @@ func SaveSecstore(store *Secstore) error {
 
 	file.Close()
 	return nil
+}
+
+func Exit(store *Secstore) {
+	
 }
 
 func main() {
