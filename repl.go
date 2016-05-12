@@ -16,6 +16,8 @@ func RunRepl(store *Secstore) {
 	liner := liner.NewLiner()
 	defer liner.Close()
 
+	liner.SetCompleter(completer)
+
 	for {
 		line, err = liner.Prompt("> ")
 		if err != nil {
@@ -82,5 +84,24 @@ func EvalCommand(store *Secstore, line []string) error {
 		}
 	} else {
 		return err
+	}
+}
+
+func completer(line string) []string {
+	sections := splitSections(line)
+
+	if len(sections) > 1 {
+		return []string(nil)
+	} else if len(sections) == 1 {
+		var matches []string = []string(nil)
+
+		for c, _ := range(Commands) {
+			if strings.HasPrefix(c, sections[0]) {
+				matches = append(matches, c)
+			}
+		}
+		return matches
+	} else {
+		return []string(nil)
 	}
 }

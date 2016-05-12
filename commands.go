@@ -7,7 +7,7 @@ import (
 )
 
 /* Be careful to not start any commands with q. */
-var commands = map[string](func(*Secstore, []string) error) {
+var Commands = map[string](func(*Secstore, []string) error) {
 	"chpass": 	ChangePass,
 	"add":		AddDataPart,
 	"mkdir":	AddDirPart,
@@ -18,6 +18,7 @@ var commands = map[string](func(*Secstore, []string) error) {
 	"cd":		ChangeDir,
 	"mv":		MovePart,
 	"help":		Help,
+	"quit":		Quit,
 }
 
 func randomPass() string {
@@ -224,14 +225,18 @@ func Help(store *Secstore, args []string) error {
 	return nil
 }
 
+func Quit(store *Secstore, args []string) error {
+	return fmt.Errorf("Quit should never actually be called!")
+}
+
 func MatchCommand(cmd string) (func(*Secstore, []string) error, error) {
 	var f func(*Secstore, []string) error
+	var found bool = false
 
-	found := false
-	for c, g := range(commands) {
+	for c, g := range(Commands) {
 		if strings.HasPrefix(c, cmd) {
 			if found {
-				return nil, fmt.Errorf("'%s' matches multiple commands.", cmd)
+				return nil, fmt.Errorf("'%s' matched mulitple commands.", cmd)
 			} else {
 				found = true
 				f = g
@@ -240,7 +245,7 @@ func MatchCommand(cmd string) (func(*Secstore, []string) error, error) {
 	}
 
 	if f == nil {
-		return nil, fmt.Errorf("No commands match '%s'.", cmd)
+		return nil, fmt.Errorf("'%s' matched no commands.", cmd)
 	} else {
 		return f, nil
 	}
