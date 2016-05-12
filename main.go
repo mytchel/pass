@@ -4,18 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	
-	"github.com/peterh/liner"
 )
 
 var secstorePath *string
 
-var LineReader *liner.State
-
 func Usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 	flag.PrintDefaults()
-	fmt.Fprintln(os.Stderr, "If no arguments are given -R is assumed.")
+	fmt.Fprintln(os.Stderr, "If no arguments are given then a repl is run.")
 }
 
 func initNewSecstore(file *os.File) error {
@@ -59,10 +55,10 @@ func main() {
 	var file *os.File
 	var pass []byte
 
-	secstorePath = flag.String("p", os.Getenv("HOME")+
+	secstorePath = flag.String("P", os.Getenv("HOME")+
 		"/.secstore", "Path to secstore file.")
 
-//	flag.Usage = Usage
+	flag.Usage = Usage
 
 	flag.Parse()
 
@@ -104,6 +100,21 @@ func main() {
 	}
 	
 	file.Close()
+
+	args := flag.Args()
+	if len(args) == 0 {
+		RunRepl(secstore)
+	} else {
+		err := EvalCommand(secstore, args)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+	}
 	
-	RunRepl(secstore)
+	if err := SaveSecstore(secstore); err != nil {
+		fmt.Fprintln(os.Stderr, "Error saving:", err)
+		os.Exit(1)
+	} else {
+		os.Exit(0)
+	}
 }

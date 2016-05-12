@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"crypto/rand"
-	"os"
 )
 
+/* Be careful to not start any commands with q. */
 var commands = map[string](func(*Secstore, []string) error) {
 	"chpass": 	ChangePass,
 	"add":		AddDataPart,
@@ -18,7 +18,6 @@ var commands = map[string](func(*Secstore, []string) error) {
 	"cd":		ChangeDir,
 	"mv":		MovePart,
 	"help":		Help,
-	"quit":		Quit,
 }
 
 func randomPass() string {
@@ -223,19 +222,6 @@ func Help(store *Secstore, args []string) error {
 	fmt.Println("help\t\tPrint this.")
 	fmt.Println("quit\t\tSave and exit.")
 	return nil
-}
-
-func Quit(store *Secstore, args []string) error {
-	if err := SaveSecstore(store); err != nil {
-		return err
-	} else {
-		if LineReader != nil {
-			LineReader.Close()
-		}
-
-		os.Exit(0)
-		return nil
-	}
 }
 
 func MatchCommand(cmd string) (func(*Secstore, []string) error, error) {

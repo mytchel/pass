@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"unicode"
-
+	"strings"
 	"github.com/peterh/liner"
 )
 
@@ -13,23 +13,30 @@ func RunRepl(store *Secstore) {
 	var line string
 	var err error
 
-	LineReader = liner.NewLiner()
+	liner := liner.NewLiner()
+	defer liner.Close()
 
 	for {
-		line, err = LineReader.Prompt("> ")
+		line, err = liner.Prompt("> ")
 		if err != nil {
 			break
 		}
 
-		LineReader.AppendHistory(line)
+		liner.AppendHistory(line)
 
 		sections = splitSections(line)
 
-		err = evalLine(store, sections)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		} 
+		if strings.HasPrefix("quit", sections[0]) {
+			break
+		} else {
+			err = EvalCommand(store, sections)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			} 
+		}
 	}
+	
+	fmt.Fprintln(os.Stderr, "Exiting...")
 }
 
 func splitSections(s string) (sections []string) {
@@ -62,7 +69,7 @@ func splitSections(s string) (sections []string) {
 	return sections
 }
 
-func evalLine(store *Secstore, line []string) error {
+func EvalCommand(store *Secstore, line []string) error {
 	if len(line) < 1 {
 		return nil
 	}
