@@ -5,25 +5,15 @@ import (
 	"crypto/aes"
 )
 
-func twoCreateNewPass(oldKey, bytes []byte) []byte {
-	var newKey, both []byte
-	var i, sum, start int
+func TwoCreateNewPass(oldKey, bytes []byte) []byte {
+	var newKey []byte
+	var i int
 
-	both = make([]byte, len(oldKey) + len(bytes))
-	copy(both, oldKey)
-	copy(both[len(oldKey):], bytes)
-
-	sum = 0
-	for i = 0; i < len(both); i++ {
-		sum += int(both[i])
-	}
-
-	start = sum % (len(both) - KeySize)
-
-	newKey = both[start:(start + KeySize)]
+	newKey = make([]byte, KeySize)
+	copy(newKey, oldKey)
 
 	for i = 0; i < KeySize; i++ {
-		newKey[i] = byte(int(newKey[i]) + sum)
+		newKey[i] += bytes[i % len(bytes)]		
 	}
 
 	return newKey
@@ -38,7 +28,7 @@ func VersionTwo(pass, clear []byte, file *os.File) ([]byte, error) {
 	copy(blockpass, pass)
 
 	for {
-		blockpass = twoCreateNewPass(blockpass, clear)
+		blockpass = TwoCreateNewPass(blockpass, clear)
 
 		n, err := file.Read(cipher)
 		if n != aes.BlockSize {
@@ -54,7 +44,7 @@ func VersionTwo(pass, clear []byte, file *os.File) ([]byte, error) {
 
 		conv.Decrypt(clear, cipher)
 
-		plain = append(plain, clear...)
+		plain = append(plain, clear[:8]...)
 	}
 
 	return plain, nil

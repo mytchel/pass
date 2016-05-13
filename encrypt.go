@@ -3,46 +3,31 @@ package main
 import (
 	"os"
 	"crypto/aes"
+	"crypto/rand"
+
+	"lackname.org/pass/decrypt"
 )
 
-func createNewPass(oldKey, bytes []byte) []byte {
-	var newKey, both []byte
-	var i, sum, start int
-
-	both = make([]byte, len(oldKey) + len(bytes))
-	copy(both, oldKey)
-	copy(both[len(oldKey):], bytes)
-
-	sum = 0
-	for i = 0; i < len(both); i++ {
-		sum += int(both[i])
-	}
-
-	start = sum % (len(both) - KeySize)
-
-	newKey = both[start:(start + KeySize)]
-
-	for i = 0; i < KeySize; i++ {
-		newKey[i] = byte(int(newKey[i]) + sum)
-	}
-
-	return newKey
-}
+var secstoreStart []byte = []byte("store 02")
 
 func EncryptBytes(pass, bytes []byte, file *os.File) error {
 	var plain, cipher, blockpass []byte
 	var n, nn int
 
-	plain = make([]byte, aes.BlockSize)
-	cipher = make([]byte, aes.BlockSize)
+	plain = make([]byte, 16)
+	cipher = make([]byte, 16)
 	blockpass = make([]byte, KeySize)
 
 	n = 0
 
 	copy(blockpass, pass)
-	copy(plain, SecstoreStart)
+	copy(plain, secstoreStart)
 
 	for {
+		if _, err := rand.Read(plain[8:]); err != nil {
+			panic(err)
+		}
+
 		conv, err := aes.NewCipher(blockpass)
 		if err != nil {
 			panic(err)
@@ -59,14 +44,14 @@ func EncryptBytes(pass, bytes []byte, file *os.File) error {
 			break
 		}
 
-		blockpass = createNewPass(blockpass, plain)
+		blockpass = decrypt.TwoCreateNewPass(blockpass, plain)
 
-		nn = copy(plain, bytes[n:])
-		for i := nn; i < len(plain); i++ {
+		nn = copy(plain[:8], bytes[n:])
+		for i := nn; i < 8; i++ {
 			plain[i] = 0
 		}
 
-		n += nn
+		n += 8
 	}
 
 	return nil

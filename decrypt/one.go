@@ -5,7 +5,7 @@ import (
 	"crypto/aes"
 )
 
-func oneCreateNewPass(oldKey, bytes []byte) []byte {
+func OneCreateNewPass(oldKey, bytes []byte) []byte {
 	var newKey, both []byte
 	var i, sum, start int
 
@@ -38,7 +38,7 @@ func VersionOne(pass, clear []byte, file *os.File) ([]byte, error) {
 	copy(blockpass, pass)
 
 	for {
-		blockpass = oneCreateNewPass(blockpass, clear)
+		blockpass = OneCreateNewPass(blockpass, clear)
 
 		n, err := file.Read(cipher)
 		if n != aes.BlockSize {
