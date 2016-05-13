@@ -28,7 +28,9 @@ func RunRepl(store *Secstore) {
 
 		sections = splitSections(line)
 
-		if strings.HasPrefix("quit", sections[0]) {
+		if len(sections) == 0 {
+
+		} else if strings.HasPrefix("quit", sections[0]) {
 			break
 		} else {
 			err = EvalCommand(store, sections)
@@ -72,10 +74,6 @@ func splitSections(s string) (sections []string) {
 }
 
 func EvalCommand(store *Secstore, line []string) error {
-	if len(line) < 1 {
-		return nil
-	}
-
 	if f, err := MatchCommand(line[0]); err == nil {
 		if len(line) > 1 {
 			return f(store, line[1:])

@@ -29,14 +29,14 @@ func ParsePart(bytes []byte, parent *Part) (*Part, int, error) {
 
 	for j = 0; j < len(bytes) && bytes[j] != 0; j++ {}
 	if j == len(bytes) {
-		return nil, j, fmt.Errorf("Error parsing secstore: Reached end.")
+		return nil, j, fmt.Errorf("Error parsing part: Reached end.")
 	}
 
 	part.Name = string(bytes[:j])
 	
 	for k = j + 1; k < len(bytes) && bytes[k] != 0; k++ {}
 	if k == len(bytes) {
-		return nil, k, fmt.Errorf("Error parsing secstore: Reached end.")
+		return nil, k, fmt.Errorf("Error parsing part: Reached end.")
 	}
 	
 	/* Data part */
