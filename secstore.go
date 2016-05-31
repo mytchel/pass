@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"lackname.org/pass/decrypt"
 )
 
 type Secstore struct {
@@ -17,7 +15,7 @@ func (store *Secstore) DecryptFile(file *os.File) error {
 	var err error
 	var plain []byte
 
-	plain, err = decrypt.DecryptFile(store.Pass, file)
+	plain, err = DecryptFile(store.Pass, file)
 	if err != nil {
 		return err
 	}

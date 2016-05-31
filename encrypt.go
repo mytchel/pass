@@ -4,8 +4,6 @@ import (
 	"os"
 	"crypto/aes"
 	"crypto/rand"
-
-	"lackname.org/pass/decrypt"
 )
 
 var secstoreStart []byte = []byte("store 02")
@@ -44,7 +42,7 @@ func EncryptBytes(pass, bytes []byte, file *os.File) error {
 			break
 		}
 
-		blockpass = decrypt.TwoCreateNewPass(blockpass, plain)
+		blockpass = TwoCreateNewPass(blockpass, plain)
 
 		nn = copy(plain[:8], bytes[n:])
 		for i := nn; i < 8; i++ {

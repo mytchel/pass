@@ -1,14 +1,10 @@
-package decrypt
+package main
 
 import (
 	"fmt"
 	"os"
 	"strings"
 	"crypto/aes"
-)
-
-const (
-	KeySize = 32
 )
 
 var decryptionFuncs = map[string](func([]byte, []byte, *os.File) ([]byte, error)) {
