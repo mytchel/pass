@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"strings"
 	"crypto/rand"
+	"github.com/peterh/liner"
 )
 
 /* Be careful to not start any commands with q. */
-var Commands = map[string](func(*Secstore, []string) error) {
+var Commands = map[string](func(*Secstore, *liner.State, []string) error) {
 	"chpass": 	ChangePass,
 	"add":		AddDataPart,
 	"mkdir":	AddDirPart,
@@ -18,6 +19,7 @@ var Commands = map[string](func(*Secstore, []string) error) {
 	"cd":		ChangeDir,
 	"mv":		MovePart,
 	"help":		Help,
+	"save":		Save,
 	"quit":		Quit,
 }
 
@@ -51,11 +53,11 @@ func randomPass() string {
 }
 
 
-func ChangePass(store *Secstore, args []string) error {
+func ChangePass(store *Secstore, line *liner.State, args []string) error {
 	var pass []byte
 	var err error
 
-	if pass, err = GetNewPass(); err != nil {
+	if pass, err = GetNewPass(line); err != nil {
 		return err
 	}
 
@@ -63,7 +65,7 @@ func ChangePass(store *Secstore, args []string) error {
 	return nil
 }
 
-func ChangeDir(store *Secstore, args []string) error {
+func ChangeDir(store *Secstore, line *liner.State, args []string) error {
 	var n *Part
 
 	if len (args) == 0 {
@@ -82,7 +84,7 @@ func ChangeDir(store *Secstore, args []string) error {
 	}
 }
 
-func RemovePart(store *Secstore, args []string) error {
+func RemovePart(store *Secstore, line *liner.State, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("usage: rm part1 part2...")
 	} else {
@@ -104,7 +106,7 @@ func RemovePart(store *Secstore, args []string) error {
 	}
 }
 
-func ShowPart(store *Secstore, args []string) error {
+func ShowPart(store *Secstore, line *liner.State, args []string) error {
 	var path []string
 	
 	if len(args) > 0 {
@@ -122,7 +124,7 @@ func ShowPart(store *Secstore, args []string) error {
 	}
 }
 
-func EditPart(store *Secstore, args []string) error {
+func EditPart(store *Secstore, line *liner.State, args []string) error {
 	if len(args) != 1 {
 		return fmt.Errorf("usage: edit part")
 	}
@@ -144,7 +146,7 @@ func EditPart(store *Secstore, args []string) error {
 	}
 }
 
-func AddDataPart(store *Secstore, args []string) error {
+func AddDataPart(store *Secstore, line *liner.State, args []string) error {
 	if len(args) != 1 {
 		return fmt.Errorf("usage: add name")
 	}
@@ -159,7 +161,7 @@ func AddDataPart(store *Secstore, args []string) error {
 	}
 }
 
-func AddDirPart(store *Secstore, args []string) error {
+func AddDirPart(store *Secstore, line *liner.State, args []string) error {
 	if len(args) != 1 {
 		return fmt.Errorf("usage: mkdir name")
 	}
@@ -174,7 +176,7 @@ func AddDirPart(store *Secstore, args []string) error {
 	}
 }
 
-func MovePart(store *Secstore, args []string) error {
+func MovePart(store *Secstore, line *liner.State, args []string) error {
 	var old, dest *Part
 	var err error
 
@@ -209,7 +211,7 @@ func MovePart(store *Secstore, args []string) error {
 	return nil	
 }
 
-func Help(store *Secstore, args []string) error {
+func Help(store *Secstore, line *liner.State, args []string) error {
 	fmt.Println("Commands can be shortened, eg: quit can be called with q.\n")
 	fmt.Println("chpass\t\tChange encryption password.")
 	fmt.Println("add name\tAdd a new password and start editing it.")
@@ -220,17 +222,22 @@ func Help(store *Secstore, args []string) error {
 	fmt.Println("edit name\tEdit a password.")
 	fmt.Println("cd dir\t\tChange directory.")
 	fmt.Println("mv old new\tMove a password or directory from new to old.")
+	fmt.Println("save\t\tSave.")
 	fmt.Println("help\t\tPrint this.")
 	fmt.Println("quit\t\tSave and exit.")
 	return nil
 }
 
-func Quit(store *Secstore, args []string) error {
+func Save(store *Secstore, line *liner.State, args []string) error {
+	return SaveSecstore(store)
+}
+
+func Quit(store *Secstore, line *liner.State, args []string) error {
 	return fmt.Errorf("Quit should never actually be called!")
 }
 
-func MatchCommand(cmd string) (func(*Secstore, []string) error, error) {
-	var f func(*Secstore, []string) error
+func MatchCommand(cmd string) (func(*Secstore, *liner.State, []string) error, error) {
+	var f func(*Secstore, *liner.State, []string) error
 	var found bool = false
 
 	for c, g := range(Commands) {

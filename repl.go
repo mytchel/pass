@@ -8,39 +8,34 @@ import (
 	"github.com/peterh/liner"
 )
 
-func RunRepl(store *Secstore) {
+func RunRepl(store *Secstore, line *liner.State) {
 	var sections []string
-	var line string
+	var l string
 	var err error
 
-	liner := liner.NewLiner()
-	defer liner.Close()
-
-	liner.SetCompleter(completer)
+	line.SetCompleter(completer)
 
 	for {
-		line, err = liner.Prompt("> ")
+		l, err = line.Prompt("> ")
 		if err != nil {
 			break
 		}
 
-		liner.AppendHistory(line)
-
-		sections = splitSections(line)
+		line.AppendHistory(l)
+		
+		sections = splitSections(l)
 
 		if len(sections) == 0 {
 
 		} else if strings.HasPrefix("quit", sections[0]) {
 			break
 		} else {
-			err = EvalCommand(store, sections)
+			err = EvalCommand(store, line, sections)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 			} 
 		}
 	}
-	
-	fmt.Fprintln(os.Stderr, "Exiting...")
 }
 
 func splitSections(s string) (sections []string) {
@@ -73,13 +68,14 @@ func splitSections(s string) (sections []string) {
 	return sections
 }
 
-func EvalCommand(store *Secstore, line []string) error {
-	if f, err := MatchCommand(line[0]); err == nil {
-		if len(line) > 1 {
-			return f(store, line[1:])
-		} else {
-			return f(store, []string(nil))
-		}
+func EvalCommand(store *Secstore, line *liner.State, sections []string) error {
+	args := []string(nil)
+	if len(sections) > 1 {
+		args = sections[1:]
+	}
+
+	if f, err := MatchCommand(sections[0]); err == nil {
+		return f(store, line, args)
 	} else {
 		return err
 	}

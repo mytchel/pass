@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"github.com/peterh/liner"
 )
 
 var secstorePath *string
@@ -14,14 +15,14 @@ func Usage() {
 	fmt.Fprintln(os.Stderr, "If no arguments are given then a repl is run.")
 }
 
-func initNewSecstore(file *os.File) error {
+func initNewSecstore(line *liner.State, file *os.File) error {
 	var err error
 	var pass []byte
 
 	fmt.Fprintln(os.Stderr, "Creating a new secstore...")
 	fmt.Fprintln(os.Stderr, "Enter the password to encrypt it with: ")
 
-	if pass, err = GetNewPass(); err != nil {
+	if pass, err = GetNewPass(line); err != nil {
 		return err
 	}
 
@@ -62,6 +63,9 @@ func main() {
 
 	flag.Parse()
 
+	line := liner.NewLiner()
+	defer line.Close()
+
 	file, err = os.Open(*secstorePath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading secstore")
@@ -71,7 +75,7 @@ func main() {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			} else {
-				if initNewSecstore(file) != nil {
+				if initNewSecstore(line, file) != nil {
 					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				} else {
@@ -85,8 +89,7 @@ func main() {
 		}
 	}
 
-	fmt.Fprint(os.Stderr, "Enter pass: ")
-	if pass, err = ReadPassword(); err != nil {
+	if pass, err = ReadPassword(line); err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading pass:", err)
 		os.Exit(1)
 	}
@@ -103,9 +106,9 @@ func main() {
 
 	args := flag.Args()
 	if len(args) == 0 {
-		RunRepl(secstore)
+		RunRepl(secstore, line)
 	} else {
-		err := EvalCommand(secstore, args)
+		err := EvalCommand(secstore, line, args)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
