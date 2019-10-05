@@ -35,14 +35,17 @@ func SaveSecstore(store *Secstore) error {
 	var file *os.File
 
 	if file, err = os.Create(*secstorePath); err != nil {
+		fmt.Fprintln(os.Stderr, "failed to save secstore")
 		return err
 	}
 
 	if err = store.EncryptToFile(file); err != nil {
+		fmt.Fprintln(os.Stderr, "failed to save secstore")
 		return err
 	}
 
 	file.Close()
+	fmt.Fprintln(os.Stdout, "secstore saved")
 	return nil
 }
 
