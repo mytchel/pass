@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
 	"github.com/peterh/liner"
 )
 
@@ -47,7 +48,7 @@ func SaveSecstore(store *Secstore) error {
 }
 
 func Exit(store *Secstore) {
-	
+
 }
 
 func main() {
@@ -99,9 +100,9 @@ func main() {
 
 	if err = secstore.DecryptFile(file); err != nil {
 		fmt.Fprintln(os.Stderr, "Error decrypting:", err)
-		os.Exit(1)		
+		os.Exit(1)
 	}
-	
+
 	file.Close()
 
 	args := flag.Args()
@@ -113,7 +114,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 		}
 	}
-	
+
 	if err := SaveSecstore(secstore); err != nil {
 		fmt.Fprintln(os.Stderr, "Error saving:", err)
 		os.Exit(1)

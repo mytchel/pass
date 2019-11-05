@@ -27,6 +27,7 @@ import "C"
 import (
 	"fmt"
 	"os"
+
 	"github.com/peterh/liner"
 )
 
@@ -86,4 +87,3 @@ func GetNewPass(line *liner.State) ([]byte, error) {
 		return nil, fmt.Errorf("Passwords did not match.")
 	}
 }
-

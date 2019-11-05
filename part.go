@@ -5,15 +5,15 @@ import (
 )
 
 const (
-	TypeDir = 1
+	TypeDir  = 1
 	TypeData = 2
 )
 
 type Part struct {
 	Name string
-	
-	Type int
-	Data string
+
+	Type     int
+	Data     string
 	SubParts *Part
 
 	Parent, Next *Part
@@ -27,24 +27,26 @@ func ParsePart(bytes []byte, parent *Part) (*Part, int, error) {
 	part = new(Part)
 	part.Parent = parent
 
-	for j = 0; j < len(bytes) && bytes[j] != 0; j++ {}
+	for j = 0; j < len(bytes) && bytes[j] != 0; j++ {
+	}
 	if j == len(bytes) {
 		return nil, j, fmt.Errorf("Error parsing part: Reached end.")
 	}
 
 	part.Name = string(bytes[:j])
-	
-	for k = j + 1; k < len(bytes) && bytes[k] != 0; k++ {}
+
+	for k = j + 1; k < len(bytes) && bytes[k] != 0; k++ {
+	}
 	if k == len(bytes) {
 		return nil, k, fmt.Errorf("Error parsing part: Reached end.")
 	}
-	
-	/* Data part */
-	if k > j + 1 {
-		part.Type = TypeData
-		part.Data = string(bytes[j+1:k])
 
-	/* Sub tree */
+	/* Data part */
+	if k > j+1 {
+		part.Type = TypeData
+		part.Data = string(bytes[j+1 : k])
+
+		/* Sub tree */
 	} else {
 		part.Type = TypeDir
 		part.SubParts, j, err = ParseParts(bytes[k+1:], part)
@@ -64,7 +66,7 @@ func ParseParts(bytes []byte, parent *Part) (*Part, int, error) {
 
 	head = new(Part)
 	prev = head
-	
+
 	i = 0
 	for i < len(bytes) && bytes[i] != 0 {
 		part, j, err = ParsePart(bytes[i:], parent)
@@ -73,7 +75,7 @@ func ParseParts(bytes []byte, parent *Part) (*Part, int, error) {
 		}
 
 		i += j + 1
-		
+
 		prev.Next = part
 		prev = part
 	}
@@ -95,7 +97,7 @@ func (part *Part) ToBytes() []byte {
 	} else {
 		bytes = append(bytes, []byte(part.Data)...)
 	}
-	
+
 	bytes = append(bytes, 0)
 
 	return bytes
@@ -155,7 +157,8 @@ func (part *Part) AddPart(o *Part) error {
 	if part.SubParts == nil {
 		part.SubParts = o
 	} else {
-		for p = part.SubParts; p.Next != nil; p = p.Next {}
+		for p = part.SubParts; p.Next != nil; p = p.Next {
+		}
 		p.Next = o
 	}
 
@@ -172,7 +175,8 @@ func (part *Part) RemovePart(o *Part) error {
 	if part.SubParts == o {
 		part.SubParts = part.SubParts.Next
 	} else {
-		for p = part.SubParts; p.Next != o; p = p.Next {}
+		for p = part.SubParts; p.Next != o; p = p.Next {
+		}
 		p.Next = o.Next
 	}
 

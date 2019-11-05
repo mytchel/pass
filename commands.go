@@ -1,26 +1,27 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"strings"
-	"crypto/rand"
+
 	"github.com/peterh/liner"
 )
 
 /* Be careful to not start any commands with q. */
-var Commands = map[string](func(*Secstore, *liner.State, []string) error) {
-	"chpass": 	ChangePass,
-	"add":		AddDataPart,
-	"mkdir":	AddDirPart,
-	"show":		ShowPart,
-	"ls":		ShowPart,
-	"rm":		RemovePart,
-	"edit":		EditPart,
-	"cd":		ChangeDir,
-	"mv":		MovePart,
-	"help":		Help,
-	"save":		Save,
-	"quit":		Quit,
+var Commands = map[string](func(*Secstore, *liner.State, []string) error){
+	"chpass": ChangePass,
+	"add":    AddDataPart,
+	"mkdir":  AddDirPart,
+	"show":   ShowPart,
+	"ls":     ShowPart,
+	"rm":     RemovePart,
+	"edit":   EditPart,
+	"cd":     ChangeDir,
+	"mv":     MovePart,
+	"help":   Help,
+	"save":   Save,
+	"quit":   Quit,
 }
 
 func randomPass() string {
@@ -33,25 +34,24 @@ func randomPass() string {
 
 	if err != nil {
 		return "Error generating random bytes!"
-	} 
+	}
 
 	sum = 0
 	for i := 0; i < len(b); i++ {
 		sum += int(b[i])
 		r = sum % 3
-		switch (r) {
+		switch r {
 		case 0:
-			b[i] = 'a' + b[i] % 26
+			b[i] = 'a' + b[i]%26
 		case 1:
-			b[i] = 'A' + b[i] % 26
+			b[i] = 'A' + b[i]%26
 		case 2:
-			b[i] = '0' + b[i] % 10
+			b[i] = '0' + b[i]%10
 		}
 	}
 
 	return string(b)
 }
-
 
 func ChangePass(store *Secstore, line *liner.State, args []string) error {
 	var pass []byte
@@ -68,7 +68,7 @@ func ChangePass(store *Secstore, line *liner.State, args []string) error {
 func ChangeDir(store *Secstore, line *liner.State, args []string) error {
 	var n *Part
 
-	if len (args) == 0 {
+	if len(args) == 0 {
 		store.Pwd = store.rootPart
 		return nil
 	} else if len(args) > 1 {
@@ -97,7 +97,7 @@ func RemovePart(store *Secstore, line *liner.State, args []string) error {
 			} else if part.Parent == nil {
 				return fmt.Errorf("Not removing root dir.")
 			}
-			
+
 			if err := part.Parent.RemovePart(part); err != nil {
 				return err
 			}
@@ -108,7 +108,7 @@ func RemovePart(store *Secstore, line *liner.State, args []string) error {
 
 func ShowPart(store *Secstore, line *liner.State, args []string) error {
 	var path []string
-	
+
 	if len(args) > 0 {
 		path = strings.Split(args[0], "/")
 	} else {
@@ -208,7 +208,7 @@ func MovePart(store *Secstore, line *liner.State, args []string) error {
 	dest.Data = old.Data
 	dest.SubParts = old.SubParts
 
-	return nil	
+	return nil
 }
 
 func Help(store *Secstore, line *liner.State, args []string) error {
@@ -240,7 +240,7 @@ func MatchCommand(cmd string) (func(*Secstore, *liner.State, []string) error, er
 	var f func(*Secstore, *liner.State, []string) error
 	var found bool = false
 
-	for c, g := range(Commands) {
+	for c, g := range Commands {
 		if strings.HasPrefix(c, cmd) {
 			if found {
 				return nil, fmt.Errorf("'%s' matched mulitple commands.", cmd)
