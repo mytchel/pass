@@ -138,7 +138,7 @@ func EditPart(store *Secstore, line *liner.State, args []string) error {
 		return fmt.Errorf("'%s' is a directory.", args[0])
 	} else {
 		if data, err := OpenEditor(part.Data); err != nil {
-			return fmt.Errorf("Not saving. Error running editor:", err)
+			return fmt.Errorf("Not saving. Error running editor: %s", err)
 		} else {
 			part.Data = data
 			return nil
@@ -212,7 +212,7 @@ func MovePart(store *Secstore, line *liner.State, args []string) error {
 }
 
 func Help(store *Secstore, line *liner.State, args []string) error {
-	fmt.Println("Commands can be shortened, eg: quit can be called with q.\n")
+	fmt.Print("Commands can be shortened, eg: quit can be called with q.\n\n")
 	fmt.Println("chpass\t\tChange encryption password.")
 	fmt.Println("add name\tAdd a new password and start editing it.")
 	fmt.Println("mkdir name\tMake a new directory.")
