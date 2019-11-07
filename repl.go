@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"unicode"
 	"strings"
+	"unicode"
+
 	"github.com/peterh/liner"
 )
 
@@ -22,7 +23,7 @@ func RunRepl(store *Secstore, line *liner.State) {
 		}
 
 		line.AppendHistory(l)
-		
+
 		sections = splitSections(l)
 
 		if len(sections) == 0 {
@@ -33,7 +34,7 @@ func RunRepl(store *Secstore, line *liner.State) {
 			err = EvalCommand(store, line, sections)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
-			} 
+			}
 		}
 	}
 }
@@ -42,7 +43,7 @@ func splitSections(s string) (sections []string) {
 	var i, j int
 	var quote bool = false
 	var section string
-	
+
 	i = 0
 	for i < len(s) {
 		section = ""
@@ -50,7 +51,7 @@ func splitSections(s string) (sections []string) {
 			if s[j] == '\'' {
 				quote = !quote
 			} else if unicode.IsSpace(rune(s[j])) && !quote {
-				break		
+				break
 			} else {
 				section = section + string(s[j])
 			}
@@ -60,7 +61,7 @@ func splitSections(s string) (sections []string) {
 
 		for i = j; i < len(s); i++ {
 			if !unicode.IsSpace(rune(s[i])) {
-				break		
+				break
 			}
 		}
 	}
@@ -89,7 +90,7 @@ func completer(line string) []string {
 	} else if len(sections) == 1 {
 		var matches []string = []string(nil)
 
-		for c, _ := range(Commands) {
+		for c, _ := range Commands {
 			if strings.HasPrefix(c, sections[0]) {
 				matches = append(matches, c)
 			}

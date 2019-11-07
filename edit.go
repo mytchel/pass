@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
-	"math/rand"
 )
 
 func findValidTempFile(prefix string) string {
@@ -16,7 +16,7 @@ func findValidTempFile(prefix string) string {
 
 	rand.Seed(int64(rand.Int()))
 	for {
-		r := rand.Int() % 25 + int('a')
+		r := rand.Int()%25 + int('a')
 
 		path = append(path, byte(r))
 
@@ -52,7 +52,7 @@ func OpenEditor(data string) (string, error) {
 	file.Close()
 
 	/* Open editor */
-	
+
 	editor := os.Getenv("EDITOR")
 	if len(editor) == 0 {
 		editor = "vi"

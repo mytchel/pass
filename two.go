@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"crypto/aes"
+	"os"
 )
 
 func TwoCreateNewPass(oldKey, bytes []byte) []byte {
@@ -13,7 +13,7 @@ func TwoCreateNewPass(oldKey, bytes []byte) []byte {
 	copy(newKey, oldKey)
 
 	for i = 0; i < KeySize; i++ {
-		newKey[i] += bytes[i % len(bytes)]		
+		newKey[i] += bytes[i%len(bytes)]
 	}
 
 	return newKey
@@ -36,7 +36,7 @@ func VersionTwo(pass, clear []byte, file *os.File) ([]byte, error) {
 		} else if err != nil {
 			return []byte(nil), err
 		}
-		
+
 		conv, err := aes.NewCipher(blockpass)
 		if err != nil {
 			return []byte(nil), err
@@ -49,4 +49,3 @@ func VersionTwo(pass, clear []byte, file *os.File) ([]byte, error) {
 
 	return plain, nil
 }
-
