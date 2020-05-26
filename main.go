@@ -115,10 +115,15 @@ func main() {
 		}
 	}
 
+/*
 	if err := SaveSecstore(secstore); err != nil {
 		fmt.Fprintln(os.Stderr, "Error saving:", err)
 		os.Exit(1)
 	} else {
 		os.Exit(0)
 	}
+
+	*/
+
+	os.Exit(0)
 }
