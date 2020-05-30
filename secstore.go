@@ -33,7 +33,7 @@ func (store *Secstore) Load() error {
 
 	store.rootPart = new(Part)
 	store.rootPart.Type = TypeDir
-	store.rootPart.Name = "/"
+	store.rootPart.Name = ""
 
 	store.rootPart.SubParts, _, err = ParseParts(plain, store.rootPart)
 	if err != nil {

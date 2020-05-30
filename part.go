@@ -121,6 +121,21 @@ func (part *Part) Print() {
 	}
 }
 
+func (part *Part) Tree(prefix string) {
+	fmt.Printf("%s%s", prefix, part.Name)
+	
+    if part.Type == TypeDir {
+        fmt.Printf("/\n")
+        var new_prefix = prefix + "  "
+
+        for p := part.SubParts; p != nil; p = p.Next {
+            p.Tree(new_prefix)
+        }
+	} else {
+	   fmt.Printf("\n")
+    }
+}
+
 func (part *Part) FindSub(path []string) *Part {
 	if len(path) == 0 {
 		return part

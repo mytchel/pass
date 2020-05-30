@@ -19,6 +19,7 @@ var Commands = map[string](func(*Secstore, *liner.State, []string) error){
 	"edit":   EditPart,
 	"cd":     ChangeDir,
 	"mv":     MovePart,
+	"tree":   Tree,
 	"help":   Help,
 	"save":   Save,
 	"quit":   Quit,
@@ -129,6 +130,25 @@ func ShowPart(store *Secstore, line *liner.State, args []string) error {
 		part.Print()
 		return nil
 	}
+}
+
+func Tree(store *Secstore, line *liner.State, args []string) error {
+	var path []string
+
+	if len(args) > 0 {
+		path = strings.Split(args[0], "/")
+	} else {
+		path = []string(nil)
+	}
+
+	part := store.Pwd.FindSub(path)
+	if part == nil {
+		return fmt.Errorf("'%s' does not exist.", args[0])
+	} 
+	
+	part.Tree("")
+
+	return nil
 }
 
 func EditPart(store *Secstore, line *liner.State, args []string) error {
