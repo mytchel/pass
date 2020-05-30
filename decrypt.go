@@ -1,18 +1,18 @@
 package main
 
 import (
+	"crypto/aes"
 	"fmt"
 	"os"
 	"strings"
-	"crypto/aes"
 )
 
-var decryptionFuncs = map[string](func([]byte, []byte, *os.File) ([]byte, error)) {
-	"SecstorePass 0.1": 	VersionOne,
-	"store 02": 		VersionTwo,
+var decryptionFuncs = map[string](func([]byte, []byte, *os.File) ([]byte, error)){
+	"SecstorePass 0.1": VersionOne,
+	"store 02":         VersionTwo,
 }
 
-/* Decrypts first block with pass, checks it decrypted alright, then passes 
+/* Decrypts first block with pass, checks it decrypted alright, then passes
  * along to the proper decryption version. */
 func DecryptFile(pass []byte, file *os.File) ([]byte, error) {
 	var clear, cipher []byte
@@ -26,7 +26,7 @@ func DecryptFile(pass []byte, file *os.File) ([]byte, error) {
 	} else if err != nil {
 		return []byte(nil), err
 	}
-		
+
 	conv, err := aes.NewCipher(pass)
 	if err != nil {
 		return []byte(nil), err
@@ -35,7 +35,7 @@ func DecryptFile(pass []byte, file *os.File) ([]byte, error) {
 	conv.Decrypt(clear, cipher)
 
 	str := string(clear)
-	for header, function := range(decryptionFuncs) {
+	for header, function := range decryptionFuncs {
 		if strings.HasPrefix(str, header) {
 			bytes, err := function(pass, clear, file)
 			return bytes, err

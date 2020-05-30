@@ -1,9 +1,9 @@
 package main
 
 import (
-	"os"
 	"crypto/aes"
 	"crypto/rand"
+	"os"
 )
 
 var secstoreStart []byte = []byte("store 02")
