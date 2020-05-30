@@ -29,7 +29,14 @@ func RunRepl(store *Secstore, line *liner.State) {
 		if len(sections) == 0 {
 
 		} else if strings.HasPrefix("quit", sections[0]) {
-			break
+            if store.Saved {
+                break
+            } else {
+                l, err = line.Prompt("There are unsaved changes, really exit? [y/n] ")
+                if err == nil && l == "y" {
+                    break
+				}
+            }
 		} else {
 			err = EvalCommand(store, line, sections)
 			if err != nil {

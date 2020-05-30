@@ -8,8 +8,6 @@ import (
 	"github.com/peterh/liner"
 )
 
-var secstorePath *string
-
 func Usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 	flag.PrintDefaults()
@@ -31,25 +29,6 @@ func initNewSecstore(line *liner.State, file *os.File) error {
 	return err
 }
 
-func SaveSecstore(store *Secstore) error {
-	var err error
-	var file *os.File
-
-	if file, err = os.Create(*secstorePath); err != nil {
-		fmt.Fprintln(os.Stderr, "failed to save secstore")
-		return err
-	}
-
-	if err = store.EncryptToFile(file); err != nil {
-		fmt.Fprintln(os.Stderr, "failed to save secstore")
-		return err
-	}
-
-	file.Close()
-	fmt.Fprintln(os.Stdout, "secstore saved")
-	return nil
-}
-
 func Exit(store *Secstore) {
 
 }
@@ -57,10 +36,11 @@ func Exit(store *Secstore) {
 func main() {
 	var secstore *Secstore
 	var err error
+    var path *string
 	var file *os.File
 	var pass []byte
 
-	secstorePath = flag.String("P", os.Getenv("HOME")+
+	path = flag.String("P", os.Getenv("HOME")+
 		"/.secstore", "Path to secstore file.")
 
 	flag.Usage = Usage
@@ -70,11 +50,11 @@ func main() {
 	line := liner.NewLiner()
 	defer line.Close()
 
-	file, err = os.Open(*secstorePath)
+	file, err = os.Open(*path)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading secstore")
 		if os.IsNotExist(err) {
-			file, err = os.Create(*secstorePath)
+			file, err = os.Create(*path)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
@@ -93,6 +73,8 @@ func main() {
 		}
 	}
 
+	file.Close()
+
 	if pass, err = ReadPassword(line); err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading pass:", err)
 		os.Exit(1)
@@ -100,13 +82,12 @@ func main() {
 
 	secstore = new(Secstore)
 	secstore.Pass = pass
+	secstore.Path = path
 
-	if err = secstore.DecryptFile(file); err != nil {
+	if err = secstore.Load(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error decrypting:", err)
 		os.Exit(1)
 	}
-
-	file.Close()
 
 	args := flag.Args()
 	if len(args) == 0 {
@@ -117,16 +98,6 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 		}
 	}
-
-/*
-	if err := SaveSecstore(secstore); err != nil {
-		fmt.Fprintln(os.Stderr, "Error saving:", err)
-		os.Exit(1)
-	} else {
-		os.Exit(0)
-	}
-
-	*/
 
 	os.Exit(0)
 }

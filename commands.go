@@ -29,7 +29,7 @@ func randomPass() string {
 	var b []byte
 	var err error
 
-	b = make([]byte, 24)
+	b = make([]byte, 25)
 	_, err = rand.Read(b)
 
 	if err != nil {
@@ -37,7 +37,7 @@ func randomPass() string {
 	}
 
 	sum = 0
-	for i := 0; i < len(b); i++ {
+	for i := 0; i < len(b) - 1; i++ {
 		sum += int(b[i])
 		r = sum % 3
 		switch r {
@@ -49,6 +49,8 @@ func randomPass() string {
 			b[i] = '0' + b[i]%10
 		}
 	}
+
+	b[24] = '\n'
 
 	return string(b)
 }
@@ -62,6 +64,8 @@ func ChangePass(store *Secstore, line *liner.State, args []string) error {
 	}
 
 	store.Pass = pass
+	store.Saved = false
+
 	return nil
 }
 
@@ -101,7 +105,10 @@ func RemovePart(store *Secstore, line *liner.State, args []string) error {
 			if err := part.Parent.RemovePart(part); err != nil {
 				return err
 			}
+        
+            store.Saved = false
 		}
+
 		return nil
 	}
 }
@@ -141,6 +148,7 @@ func EditPart(store *Secstore, line *liner.State, args []string) error {
 			return fmt.Errorf("Not saving. Error running editor: %s", err)
 		} else {
 			part.Data = data
+            store.Saved = false
 			return nil
 		}
 	}
@@ -155,6 +163,7 @@ func AddDataPart(store *Secstore, line *liner.State, args []string) error {
 	if part, err := store.addPart(path); err == nil {
 		part.Type = TypeData
 		part.Data, _ = OpenEditor(randomPass())
+        store.Saved = false
 		return nil
 	} else {
 		return err
@@ -170,6 +179,7 @@ func AddDirPart(store *Secstore, line *liner.State, args []string) error {
 	if part, err := store.addPart(path); err == nil {
 		part.Type = TypeDir
 		part.SubParts = nil
+        store.Saved = false
 		return nil
 	} else {
 		return err
@@ -208,6 +218,8 @@ func MovePart(store *Secstore, line *liner.State, args []string) error {
 	dest.Data = old.Data
 	dest.SubParts = old.SubParts
 
+    store.Saved = false
+
 	return nil
 }
 
@@ -229,7 +241,7 @@ func Help(store *Secstore, line *liner.State, args []string) error {
 }
 
 func Save(store *Secstore, line *liner.State, args []string) error {
-	return SaveSecstore(store)
+	return store.Save()
 }
 
 func Quit(store *Secstore, line *liner.State, args []string) error {
