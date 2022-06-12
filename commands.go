@@ -254,6 +254,7 @@ func Help(store *Secstore, line *liner.State, args []string) error {
 	fmt.Println("edit name\tEdit a password.")
 	fmt.Println("cd dir\t\tChange directory.")
 	fmt.Println("mv old new\tMove a password or directory from new to old.")
+	fmt.Println("tree\t\tPrints a tree of directories and passwords.")
 	fmt.Println("save\t\tSave.")
 	fmt.Println("help\t\tPrint this.")
 	fmt.Println("quit\t\tSave and exit.")
